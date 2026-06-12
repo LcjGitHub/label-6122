@@ -127,12 +127,12 @@ export function parseMorseSymbols(morse: string): Array<'dot' | 'dash' | 'letter
 
 /**
  * 贪心解析无分隔符的连续点划串为文本
- * 从左到右依次匹配 REVERSE_MORSE_MAP 中最长的合法摩斯码
- * 例：...---... → S O S → SOS
+ * 从左到右按最长优先策略匹配所有字母 A-Z 和数字 0-9
+ * 例：...---... → V(...) + O(---) + S(...) → VOS
  * @param input - 仅含 . 和 - 的连续字符串
  * @returns 解码后的文本
  */
-export function greedyParseDotDash(input: string): string {
+export function greedyMorseToText(input: string): string {
   const trimmed = input.trim()
   if (!trimmed) return ''
 
@@ -157,7 +157,10 @@ export function greedyParseDotDash(input: string): string {
       }
     }
     if (!matched) {
-      throw new Error(`无法识别的序列：从位置 ${pos + 1} 起「${trimmed.slice(pos, pos + maxLen)}」无法匹配任何字母`)
+      const remaining = trimmed.slice(pos)
+      throw new Error(
+        `无法识别的序列：从位置 ${pos + 1} 起「${remaining.slice(0, maxLen)}」无法匹配任何字符`,
+      )
     }
   }
 

@@ -5,7 +5,7 @@ import {
   MinusOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons'
-import { greedyParseDotDash } from '../utils/morse'
+import { greedyMorseToText } from '../utils/morse'
 
 const { Text } = Typography
 
@@ -33,7 +33,7 @@ export default function TapCodeInputPanel({ onDecode }: TapCodeInputPanelProps) 
       return
     }
     try {
-      const decoded = greedyParseDotDash(sequence)
+      const decoded = greedyMorseToText(sequence)
       setResult(decoded)
       onDecode?.(decoded)
     } catch (err) {

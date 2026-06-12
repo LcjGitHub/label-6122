@@ -21,7 +21,7 @@ export default function ConvertPage() {
   const [activeIndex, setActiveIndex] = useState(-1)
   const [autoAnimate, setAutoAnimate] = useState(false)
   const { addRecord } = useConvertRecordStore()
-  const audioSettings = useAudioSettingsStore()
+  const { speed, pitch } = useAudioSettingsStore()
 
   /** 文本 → 摩斯 */
   const handleTextToMorse = useCallback(() => {
@@ -77,12 +77,12 @@ export default function ConvertPage() {
     try {
       await playMorse(morse, (_symbol, index) => {
         setActiveIndex(index)
-      }, audioSettings)
+      }, { speed, pitch })
     } finally {
       setPlaying(false)
       setActiveIndex(-1)
     }
-  }, [morse, audioSettings])
+  }, [morse, speed, pitch])
 
   /** 清空输入 */
   const handleClear = () => {

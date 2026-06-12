@@ -34,56 +34,59 @@ export default function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
       onClose={onClose}
       open={open}
       width={320}
+      forceRender
     >
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-        <div>
-          <Title level={5} style={{ marginBottom: 8 }}>
-            播放速度
-          </Title>
-          <Radio.Group
-            value={speed}
-            onChange={(e) => setSpeed(e.target.value)}
-            optionType="button"
-            buttonStyle="solid"
-          >
-            {speedOptions.map((opt) => (
-              <Radio.Button key={opt.value} value={opt.value}>
-                {opt.label}
-              </Radio.Button>
-            ))}
-          </Radio.Group>
-          <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-            {speed === 'slow' && '点划间隔更长，适合初学者辨认'}
-            {speed === 'normal' && '标准速度，日常练习推荐'}
-            {speed === 'fast' && '紧凑节奏，挑战高阶听力'}
-          </Text>
-        </div>
+      <div aria-hidden={!open} style={{ width: '100%' }}>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <div>
+            <Title level={5} style={{ marginBottom: 8 }}>
+              播放速度
+            </Title>
+            <Radio.Group
+              value={speed}
+              onChange={(e) => setSpeed(e.target.value)}
+              optionType="button"
+              buttonStyle="solid"
+            >
+              {speedOptions.map((opt) => (
+                <Radio.Button key={opt.value} value={opt.value}>
+                  {opt.label}
+                </Radio.Button>
+              ))}
+            </Radio.Group>
+            <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+              {speed === 'slow' && '点划间隔更长，适合初学者辨认'}
+              {speed === 'normal' && '标准速度，日常练习推荐'}
+              {speed === 'fast' && '紧凑节奏，挑战高阶听力'}
+            </Text>
+          </div>
 
-        <Divider style={{ margin: '8px 0' }} />
+          <Divider style={{ margin: '8px 0' }} />
 
-        <div>
-          <Title level={5} style={{ marginBottom: 8 }}>
-            音调高低
-          </Title>
-          <Radio.Group
-            value={pitch}
-            onChange={(e) => setPitch(e.target.value)}
-            optionType="button"
-            buttonStyle="solid"
-          >
-            {pitchOptions.map((opt) => (
-              <Radio.Button key={opt.value} value={opt.value}>
-                {opt.label}
-              </Radio.Button>
-            ))}
-          </Radio.Group>
-          <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-            {pitch === 'low' && '低音 400Hz，声音沉稳'}
-            {pitch === 'mid' && '中音 600Hz，经典摩斯音'}
-            {pitch === 'high' && '高音 800Hz，清脆明亮'}
-          </Text>
-        </div>
-      </Space>
+          <div>
+            <Title level={5} style={{ marginBottom: 8 }}>
+              音调高低
+            </Title>
+            <Radio.Group
+              value={pitch}
+              onChange={(e) => setPitch(e.target.value)}
+              optionType="button"
+              buttonStyle="solid"
+            >
+              {pitchOptions.map((opt) => (
+                <Radio.Button key={opt.value} value={opt.value}>
+                  {opt.label}
+                </Radio.Button>
+              ))}
+            </Radio.Group>
+            <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+              {pitch === 'low' && '低音 400Hz，声音沉稳'}
+              {pitch === 'mid' && '中音 600Hz，经典摩斯音'}
+              {pitch === 'high' && '高音 800Hz，清脆明亮'}
+            </Text>
+          </div>
+        </Space>
+      </div>
     </Drawer>
   )
 }

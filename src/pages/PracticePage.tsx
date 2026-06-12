@@ -24,7 +24,7 @@ function pickRandomWord(exclude?: string): string {
  */
 export default function PracticePage() {
   const { total, correct, submitAnswer, resetStats } = usePracticeStore()
-  const audioSettings = useAudioSettingsStore()
+  const { speed, pitch } = useAudioSettingsStore()
   const [currentWord, setCurrentWord] = useState(() => pickRandomWord())
   const [currentMorse, setCurrentMorse] = useState(() => textToMorse(currentWord))
   const [answer, setAnswer] = useState('')
@@ -53,12 +53,12 @@ export default function PracticePage() {
     try {
       await playMorse(currentMorse, (_symbol, index) => {
         setActiveIndex(index)
-      }, audioSettings)
+      }, { speed, pitch })
     } finally {
       setPlaying(false)
       setActiveIndex(-1)
     }
-  }, [currentMorse, audioSettings])
+  }, [currentMorse, speed, pitch])
 
   /** 提交答案 */
   const handleSubmit = () => {

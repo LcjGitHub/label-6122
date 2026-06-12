@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Layout, Menu, Button } from 'antd'
+import { Layout, Menu, Button, Tooltip } from 'antd'
 import { SwapOutlined, SoundOutlined, TableOutlined, EditOutlined, SettingOutlined } from '@ant-design/icons'
 import { Link, useLocation, Outlet } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -48,12 +48,15 @@ export default function AppLayout() {
           items={menuItems}
           style={{ flex: 1, minWidth: 0 }}
         />
-        <Button
-          type="text"
-          icon={<SettingOutlined />}
-          style={{ color: '#fff', fontSize: 18 }}
-          onClick={() => setSettingsOpen(true)}
-        />
+        <Tooltip title="音频设置">
+          <Button
+            type="text"
+            icon={<SettingOutlined />}
+            aria-label="音频设置"
+            style={{ color: '#fff', fontSize: 18 }}
+            onClick={() => setSettingsOpen(true)}
+          />
+        </Tooltip>
       </Header>
       <Content style={{ padding: '24px 48px' }}>
         <motion.div

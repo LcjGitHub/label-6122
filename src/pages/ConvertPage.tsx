@@ -2,8 +2,10 @@ import { useState, useCallback } from 'react'
 import { Card, Input, Button, Space, Typography, Divider, message } from 'antd'
 import { SwapOutlined, SoundOutlined, ClearOutlined } from '@ant-design/icons'
 import MorseVisualizer from '../components/MorseVisualizer'
+import RecordList from '../components/RecordList'
 import { textToMorse, morseToText, isValidMorse } from '../utils/morse'
 import { playMorse } from '../utils/audio'
+import { useConvertRecordStore } from '../store/convertRecordStore'
 
 const { TextArea } = Input
 const { Title, Paragraph } = Typography
@@ -17,6 +19,7 @@ export default function ConvertPage() {
   const [playing, setPlaying] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [autoAnimate, setAutoAnimate] = useState(false)
+  const { addRecord } = useConvertRecordStore()
 
   /** 文本 → 摩斯 */
   const handleTextToMorse = useCallback(() => {
@@ -24,11 +27,12 @@ export default function ConvertPage() {
       const result = textToMorse(text)
       setMorse(result)
       setAutoAnimate(true)
+      addRecord(text, result, 'text-to-morse')
       message.success('转换成功')
     } catch (err) {
       message.error(err instanceof Error ? err.message : '转换失败')
     }
-  }, [text])
+  }, [text, addRecord])
 
   /** 摩斯 → 文本 */
   const handleMorseToText = useCallback(() => {
@@ -39,11 +43,21 @@ export default function ConvertPage() {
     try {
       const result = morseToText(morse)
       setText(result)
+      addRecord(result, morse, 'morse-to-text')
       message.success('转换成功')
     } catch (err) {
       message.error(err instanceof Error ? err.message : '转换失败')
     }
-  }, [morse])
+  }, [morse, addRecord])
+
+  /** 回填记录到输入框 */
+  const handleRestore = useCallback((restoredText: string, restoredMorse: string) => {
+    setText(restoredText)
+    setMorse(restoredMorse)
+    setAutoAnimate(false)
+    setActiveIndex(-1)
+    message.success('已回填记录')
+  }, [])
 
   /** 播放摩斯音频 */
   const handlePlay = useCallback(async () => {
@@ -133,6 +147,8 @@ export default function ConvertPage() {
             activeIndex={activeIndex}
             autoAnimate={autoAnimate && !playing}
           />
+
+          <RecordList onRestore={handleRestore} />
         </Space>
       </Card>
     </div>

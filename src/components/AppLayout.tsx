@@ -7,6 +7,7 @@ const { Header, Content, Footer } = Layout
 
 export default function AppLayout() {
   const location = useLocation()
+  const decodedPath = decodeURIComponent(location.pathname)
 
   const menuItems = [
     {
@@ -35,7 +36,7 @@ export default function AppLayout() {
         <Menu
           theme="dark"
           mode="horizontal"
-          selectedKeys={[location.pathname]}
+          selectedKeys={[decodedPath]}
           items={menuItems}
           style={{ flex: 1, minWidth: 0 }}
         />

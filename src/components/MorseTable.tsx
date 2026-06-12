@@ -2,7 +2,8 @@ import { useState, useCallback } from 'react'
 import { Table, Input, Typography } from 'antd'
 import { SearchOutlined, SoundOutlined } from '@ant-design/icons'
 import { MORSE_MAP } from '../utils/morse'
-import { playChar } from '../utils/audio'
+import { playChar, stopPlay } from '../utils/audio'
+import MorseVisualizer from './MorseVisualizer'
 
 const { Text } = Typography
 
@@ -12,10 +13,14 @@ interface MorseEntry {
   code: string
 }
 
-const DATA: MorseEntry[] = Object.entries(MORSE_MAP).map(([char, code]) => ({
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+const DIGITS = '0123456789'.split('')
+const ORDERED_CHARS = [...LETTERS, ...DIGITS]
+
+const DATA: MorseEntry[] = ORDERED_CHARS.map((char) => ({
   key: char,
   char,
-  code,
+  code: MORSE_MAP[char],
 }))
 
 const columns = [
@@ -48,12 +53,9 @@ const columns = [
     key: 'visual',
     align: 'center' as const,
     render: (code: string) => (
-      <span style={{ fontSize: 18, letterSpacing: 3 }}>
-        {code
-          .split('')
-          .map((c) => (c === '.' ? '·' : '—'))
-          .join(' ')}
-      </span>
+      <div className="morse-table-visual">
+        <MorseVisualizer morse={code} />
+      </div>
     ),
   },
   {
@@ -83,11 +85,10 @@ export default function MorseTable({ onPlay }: MorseTableProps) {
 
   const handleRowClick = useCallback(
     (record: MorseEntry) => {
+      stopPlay()
       setActiveKey(record.key)
       onPlay?.(record.char)
-      playChar(record.char).finally(() => {
-        setActiveKey(null)
-      })
+      playChar(record.char)
     },
     [onPlay],
   )

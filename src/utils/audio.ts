@@ -11,6 +11,8 @@ const TIMING = {
 } as const
 
 let audioContext: AudioContext | null = null
+let playCancelled = false
+let currentOscillator: OscillatorNode | null = null
 
 /**
  * 获取或创建 AudioContext 实例
@@ -43,6 +45,7 @@ function playTone(durationMs: number): Promise<void> {
 
   oscillator.start(now)
   oscillator.stop(now + durationSec)
+  currentOscillator = oscillator
 
   return new Promise((resolve) => {
     setTimeout(resolve, durationMs)
@@ -64,8 +67,11 @@ export async function playMorse(
   }
 
   const symbols = parseMorseSymbols(morse)
+  playCancelled = false
 
   for (let i = 0; i < symbols.length; i++) {
+    if (playCancelled) break
+
     const symbol = symbols[i]
 
     onSymbol?.(symbol, i)
@@ -90,6 +96,21 @@ export async function playMorse(
 }
 
 /**
+ * 停止当前正在播放的摩斯电码
+ */
+export function stopPlay(): void {
+  playCancelled = true
+  if (currentOscillator) {
+    try {
+      currentOscillator.stop()
+    } catch {
+      // ignore if already stopped
+    }
+    currentOscillator = null
+  }
+}
+
+/**
  * 播放单个点或划
  * @param type - 符号类型
  */
@@ -101,6 +122,11 @@ export async function playSingleSymbol(type: 'dot' | 'dash'): Promise<void> {
   await playTone(type === 'dot' ? TIMING.dot : TIMING.dash)
 }
 
+/**
+ * 播放单个字符的摩斯电码
+ * @param char - 单个字母或数字字符
+ * @param onSymbol - 每播放一个符号时的回调
+ */
 export async function playChar(char: string, onSymbol?: (symbol: 'dot' | 'dash' | 'letterGap' | 'wordGap', index: number) => void): Promise<void> {
   const morse = MORSE_MAP[char.toUpperCase()]
   if (!morse) return

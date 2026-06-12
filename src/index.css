@@ -28,3 +28,27 @@ body {
   background-color: #e6f4ff !important;
   transition: background-color 0.15s ease;
 }
+
+.morse-table-visual .morse-visualizer {
+  padding: 4px 8px;
+  min-height: 32px;
+  background: transparent;
+  border: none;
+  justify-content: center;
+}
+
+.morse-table-visual .morse-symbol {
+  min-width: 20px;
+  height: 20px;
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+.morse-table-visual .morse-symbol.dot {
+  width: 20px;
+  min-width: 20px;
+}
+
+.morse-table-visual .morse-symbol.dash {
+  min-width: 32px;
+}

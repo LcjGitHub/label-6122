@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
-import { Card, Input, Button, Space, Typography, Statistic, Row, Col, message, Tag, Segmented } from 'antd'
+import { Card, Input, Button, Space, Typography, Statistic, Row, Col, message, Tag, Segmented, Alert } from 'antd'
 import { SoundOutlined, CheckOutlined, ReloadOutlined, DeleteOutlined, BookOutlined, FireOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import MorseVisualizer from '../components/MorseVisualizer'
@@ -12,12 +12,13 @@ import { useWordLibraryStore } from '../store/wordLibraryStore'
 const { Title, Paragraph, Text } = Typography
 
 /**
- * 从词库随机选取一个单词
+ * 从词库随机选取一个单词，词库为空时返回 null
  */
-function pickRandomWord(wordPool: string[], exclude?: string): string {
+function pickRandomWord(wordPool: string[], exclude?: string): string | null {
+  if (wordPool.length === 0) return null
   const pool = exclude ? wordPool.filter((w) => w !== exclude) : wordPool
-  if (pool.length === 0) return wordPool[0] || ''
-  return pool[Math.floor(Math.random() * pool.length)]
+  if (pool.length === 0) return wordPool[0] ?? null
+  return pool[Math.floor(Math.random() * pool.length)] ?? null
 }
 
 /**
@@ -33,17 +34,18 @@ export default function PracticePage() {
     return getPracticeWordsByDifficulty(difficulty)
   }, [customWords, difficulty])
   const usingCustom = customWords.length > 0
+  const noAvailableWords = activeWords.length === 0
 
-  const prevCustomWordsLen = useRef(customWords.length)
-  const [currentWord, setCurrentWord] = useState(() => pickRandomWord(activeWords))
-  const currentMorse = useMemo(() => textToMorse(currentWord), [currentWord])
+  const prevCustomWordsSig = useRef(JSON.stringify(customWords))
+  const [currentWord, setCurrentWord] = useState<string | null>(() => pickRandomWord(activeWords))
+  const currentMorse = useMemo(() => (currentWord ? textToMorse(currentWord) : ''), [currentWord])
   const [answer, setAnswer] = useState('')
   const [playing, setPlaying] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [submitted, setSubmitted] = useState(false)
 
   /** 重置题目状态 */
-  const resetQuestionState = useCallback((word: string) => {
+  const resetQuestionState = useCallback((word: string | null) => {
     setCurrentWord(word)
     setAnswer('')
     setSubmitted(false)
@@ -53,10 +55,14 @@ export default function PracticePage() {
   /** 换题 */
   const nextQuestion = useCallback(
     (exclude?: string) => {
+      if (noAvailableWords) {
+        resetQuestionState(null)
+        return
+      }
       const word = pickRandomWord(activeWords, exclude)
       resetQuestionState(word)
     },
-    [activeWords, resetQuestionState],
+    [activeWords, noAvailableWords, resetQuestionState],
   )
 
   /** 切换难度 */
@@ -64,22 +70,28 @@ export default function PracticePage() {
     (newDifficulty: DifficultyLevel) => {
       setDifficulty(newDifficulty)
       const newWords = getPracticeWordsByDifficulty(newDifficulty)
-      const word = pickRandomWord(newWords, currentWord)
+      if (newWords.length === 0) {
+        resetQuestionState(null)
+        return
+      }
+      const word = pickRandomWord(newWords, currentWord ?? undefined)
       resetQuestionState(word)
     },
     [setDifficulty, currentWord, resetQuestionState],
   )
 
   useEffect(() => {
-    if (customWords.length !== prevCustomWordsLen.current) {
-      prevCustomWordsLen.current = customWords.length
-      const word = pickRandomWord(activeWords, currentWord)
+    const currentSig = JSON.stringify(customWords)
+    if (currentSig !== prevCustomWordsSig.current) {
+      prevCustomWordsSig.current = currentSig
+      const word = pickRandomWord(activeWords, currentWord ?? undefined)
       queueMicrotask(() => resetQuestionState(word))
     }
-  }, [customWords.length, activeWords, currentWord, resetQuestionState])
+  }, [customWords, activeWords, currentWord, resetQuestionState])
 
   /** 播放当前题目摩斯码 */
   const handlePlay = useCallback(async () => {
+    if (!currentMorse || noAvailableWords) return
     setPlaying(true)
     setActiveIndex(-1)
     try {
@@ -90,10 +102,11 @@ export default function PracticePage() {
       setPlaying(false)
       setActiveIndex(-1)
     }
-  }, [currentMorse, speed, pitch])
+  }, [currentMorse, noAvailableWords, speed, pitch])
 
   /** 提交答案 */
   const handleSubmit = () => {
+    if (noAvailableWords || !currentWord) return
     const normalized = answer.trim().toUpperCase()
     if (!normalized) {
       message.warning('请输入答案')
@@ -115,18 +128,6 @@ export default function PracticePage() {
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
-      <Space align="center" style={{ marginBottom: 8 }}>
-        <Title level={2} style={{ margin: 0 }}>
-          听码练习
-        </Title>
-        <Tag icon={<BookOutlined />} color={usingCustom ? 'blue' : 'default'}>
-          {usingCustom ? '自定义词库' : '系统默认词库'}
-        </Tag>
-        <Link to="/斜杠词库" style={{ fontSize: 14 }}>
-          管理词库
-        </Link>
-      </Space>
-
       <Card style={{ marginBottom: 16 }}>
         <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
           <Text strong>难度选择</Text>
@@ -142,12 +143,33 @@ export default function PracticePage() {
         </Space>
       </Card>
 
-      <Paragraph type="secondary">
-        点击播放听取摩斯电码，输入你听到的内容并提交。统计将保存在本地。
-        {usingCustom
-          ? `当前使用你的自定义词库（共 ${activeWords.length} 个单词）。`
-          : `当前使用系统默认词库（共 ${activeWords.length} 个单词），你可以在「斜杠词库」中添加自定义单词。`}
-      </Paragraph>
+      <Space align="center" style={{ marginBottom: 8 }}>
+        <Title level={2} style={{ margin: 0 }}>
+          听码练习
+        </Title>
+        <Tag icon={<BookOutlined />} color={usingCustom ? 'blue' : 'default'}>
+          {usingCustom ? '自定义词库' : '系统默认词库'}
+        </Tag>
+        <Link to="/斜杠词库" style={{ fontSize: 14 }}>
+          管理词库
+        </Link>
+      </Space>
+
+      {noAvailableWords ? (
+        <Alert
+          message="暂无符合该难度的单词"
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      ) : (
+        <Paragraph type="secondary">
+          点击播放听取摩斯电码，输入你听到的内容并提交。统计将保存在本地。
+          {usingCustom
+            ? `当前使用你的自定义词库（共 ${activeWords.length} 个单词）。`
+            : `当前使用系统默认词库（共 ${activeWords.length} 个单词），你可以在「斜杠词库」中添加自定义单词。`}
+        </Paragraph>
+      )}
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col span={6}>
@@ -191,12 +213,13 @@ export default function PracticePage() {
               icon={<SoundOutlined />}
               onClick={handlePlay}
               loading={playing}
+              disabled={noAvailableWords || !currentWord}
             >
               播放摩斯码
             </Button>
           </div>
 
-          <MorseVisualizer morse={currentMorse} activeIndex={activeIndex} />
+          {currentWord && <MorseVisualizer morse={currentMorse} activeIndex={activeIndex} />}
 
           <div>
             <Text strong>你的答案</Text>
@@ -206,7 +229,7 @@ export default function PracticePage() {
               onChange={(e) => setAnswer(e.target.value)}
               onPressEnter={handleSubmit}
               placeholder="输入听到的单词"
-              disabled={submitted}
+              disabled={submitted || noAvailableWords}
               style={{ marginTop: 8 }}
             />
           </div>
@@ -216,13 +239,14 @@ export default function PracticePage() {
               type="primary"
               icon={<CheckOutlined />}
               onClick={handleSubmit}
-              disabled={submitted}
+              disabled={submitted || noAvailableWords || !currentWord}
             >
               提交答案
             </Button>
             <Button
               icon={<ReloadOutlined />}
-              onClick={() => nextQuestion(currentWord)}
+              onClick={() => nextQuestion(currentWord ?? undefined)}
+              disabled={noAvailableWords}
             >
               下一题
             </Button>
@@ -231,7 +255,7 @@ export default function PracticePage() {
             </Button>
           </Space>
 
-          {submitted && (
+          {submitted && currentWord && (
             <div style={{ textAlign: 'center' }}>
               <Text type={answer.trim().toUpperCase() === currentWord ? 'success' : 'danger'}>
                 {answer.trim().toUpperCase() === currentWord

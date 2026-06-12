@@ -67,6 +67,20 @@
     "FIRE",
     "WIND",
     "EARTH",
-    "SKY"
+    "SKY",
+    "MESSAGE",
+    "NETWORK",
+    "KEYBOARD",
+    "COMPUTER",
+    "PROGRAM",
+    "HAMSTER",
+    "ELEPHANT",
+    "BUTTERFLY",
+    "CHOCOLATE",
+    "ADVENTURE",
+    "WONDERFUL",
+    "TELEGRAPH",
+    "BROADCAST",
+    "TRANSMIT"
   ]
 }

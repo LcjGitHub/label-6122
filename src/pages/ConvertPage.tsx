@@ -24,6 +24,7 @@ export default function ConvertPage() {
   const [visualResetKey, setVisualResetKey] = useState(0)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastConvertedTextRef = useRef<string>('')
+  const lastMorseRef = useRef<string>('')
   const playSessionRef = useRef<MorsePlaySession | null>(null)
   const { addRecord } = useConvertRecordStore()
   const { speed, pitch } = useAudioSettingsStore()
@@ -55,6 +56,27 @@ export default function ConvertPage() {
       }
     }
   }, [text])
+
+  useEffect(() => {
+    if (lastMorseRef.current === '') {
+      lastMorseRef.current = morse
+      return
+    }
+    if (morse !== lastMorseRef.current) {
+      lastMorseRef.current = morse
+      const session = playSessionRef.current
+      if (session) {
+        const state = session.getState()
+        if (state === 'playing' || state === 'paused') {
+          session.stop()
+          playSessionRef.current = null
+          setActiveIndex(-1)
+          setVisualResetKey((k) => k + 1)
+          setPlaybackState('idle')
+        }
+      }
+    }
+  }, [morse])
 
   useEffect(() => {
     return () => {
@@ -111,6 +133,7 @@ export default function ConvertPage() {
     setVisualResetKey((k) => k + 1)
     setPlaybackState('idle')
     lastConvertedTextRef.current = restoredText
+    lastMorseRef.current = restoredMorse
     message.success('已回填记录')
   }, [])
 
@@ -120,6 +143,7 @@ export default function ConvertPage() {
       message.warning('请先输入或转换摩斯码')
       return
     }
+    lastMorseRef.current = morse
     setAutoAnimate(false)
     setActiveIndex(-1)
     setVisualResetKey((k) => k + 1)
@@ -143,22 +167,25 @@ export default function ConvertPage() {
 
   /** 暂停播放 */
   const handlePause = useCallback(() => {
-    if (playSessionRef.current && playbackState === 'playing') {
-      playSessionRef.current.pause()
+    const session = playSessionRef.current
+    if (session && session.getState() === 'playing') {
+      session.pause()
     }
-  }, [playbackState])
+  }, [])
 
   /** 继续播放 */
   const handleResume = useCallback(() => {
-    if (playSessionRef.current && playbackState === 'paused') {
-      playSessionRef.current.resume()
+    const session = playSessionRef.current
+    if (session && session.getState() === 'paused') {
+      session.resume()
     }
-  }, [playbackState])
+  }, [])
 
   /** 停止播放 */
   const handleStop = useCallback(() => {
-    if (playSessionRef.current) {
-      playSessionRef.current.stop()
+    const session = playSessionRef.current
+    if (session) {
+      session.stop()
       playSessionRef.current = null
     }
     setActiveIndex(-1)
@@ -179,6 +206,7 @@ export default function ConvertPage() {
     setVisualResetKey((k) => k + 1)
     setPlaybackState('idle')
     lastConvertedTextRef.current = ''
+    lastMorseRef.current = ''
   }
 
   /** 复制摩斯码到剪贴板 */

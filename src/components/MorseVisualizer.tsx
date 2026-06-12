@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { parseMorseSymbols } from '../utils/morse'
 import { getTiming } from '../utils/audio'
@@ -9,20 +9,41 @@ interface MorseVisualizerProps {
   morse: string
   activeIndex?: number
   autoAnimate?: boolean
+  resetKey?: number
 }
 
 export default function MorseVisualizer({
   morse,
   activeIndex = -1,
   autoAnimate = false,
+  resetKey = 0,
 }: MorseVisualizerProps) {
   const symbols = parseMorseSymbols(morse)
   const [animIndex, setAnimIndex] = useState(-1)
   const audioSettings = useAudioSettingsStore()
+  const animIndexRef = useRef(-1)
+  const resetKeyRef = useRef(resetKey)
 
   const setAnimIndexSafe = useCallback((index: number) => {
+    animIndexRef.current = index
     setAnimIndex(index)
   }, [])
+
+  useEffect(() => {
+    if (resetKey !== resetKeyRef.current) {
+      resetKeyRef.current = resetKey
+      if (animIndexRef.current !== -1) {
+        setAnimIndexSafe(-1)
+      }
+    }
+  }, [resetKey, setAnimIndexSafe])
+
+  useEffect(() => {
+    if (animIndexRef.current !== -1) {
+      setAnimIndexSafe(-1)
+    }
+    resetKeyRef.current = resetKey
+  }, [morse, setAnimIndexSafe, resetKey])
 
   useEffect(() => {
     if (!autoAnimate || !morse.trim()) {
@@ -33,11 +54,12 @@ export default function MorseVisualizer({
     const timing = getTiming(audioSettings)
     let cancelled = false
     let animationFrame: ReturnType<typeof setTimeout>
+    const startedResetKey = resetKeyRef.current
 
     const run = async () => {
       while (!cancelled) {
         for (let i = 0; i < parsed.length; i++) {
-          if (cancelled) break
+          if (cancelled || resetKeyRef.current !== startedResetKey) break
           setAnimIndexSafe(i)
 
           const sym = parsed[i]
@@ -54,7 +76,7 @@ export default function MorseVisualizer({
             animationFrame = setTimeout(r, duration)
           })
         }
-        if (cancelled) break
+        if (cancelled || resetKeyRef.current !== startedResetKey) break
         setAnimIndexSafe(-1)
         await new Promise<void>((r) => {
           animationFrame = setTimeout(r, 500)
@@ -79,22 +101,65 @@ export default function MorseVisualizer({
     <div className="morse-visualizer">
       <AnimatePresence mode="popLayout">
         {symbols.map((symbol, index) => {
+          const isActive = index === highlightIndex
+
           if (symbol === 'letterGap') {
             return (
-              <span key={`gap-${index}`} className="morse-gap letter-gap">
+              <motion.span
+                key={`gap-${index}`}
+                className={`morse-gap letter-gap ${isActive ? 'active' : ''}`}
+                animate={{
+                  scale: isActive ? 1.3 : 1,
+                  color: isActive ? '#1677ff' : '#bfbfbf',
+                  backgroundColor: isActive ? '#e6f4ff' : 'transparent',
+                  borderRadius: 4,
+                  boxShadow: isActive ? '0 0 8px rgba(22, 119, 255, 0.5)' : 'none',
+                }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                style={{
+                  padding: '2px 6px',
+                  fontWeight: isActive ? 700 : 400,
+                  fontSize: 16,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 20,
+                  height: 28,
+                }}
+              >
                 |
-              </span>
+              </motion.span>
             )
           }
           if (symbol === 'wordGap') {
             return (
-              <span key={`word-${index}`} className="morse-gap word-gap">
+              <motion.span
+                key={`word-${index}`}
+                className={`morse-gap word-gap ${isActive ? 'active' : ''}`}
+                animate={{
+                  scale: isActive ? 1.3 : 1,
+                  color: isActive ? '#1677ff' : '#8c8c8c',
+                  backgroundColor: isActive ? '#e6f4ff' : 'transparent',
+                  borderRadius: 4,
+                  boxShadow: isActive ? '0 0 8px rgba(22, 119, 255, 0.5)' : 'none',
+                }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                style={{
+                  padding: '2px 8px',
+                  fontWeight: isActive ? 700 : 400,
+                  fontSize: 18,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 28,
+                  height: 28,
+                }}
+              >
                 /
-              </span>
+              </motion.span>
             )
           }
 
-          const isActive = index === highlightIndex
           return (
             <motion.span
               key={`sym-${index}`}

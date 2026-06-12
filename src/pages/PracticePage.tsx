@@ -45,6 +45,7 @@ export default function PracticePage() {
   const [visualResetKey, setVisualResetKey] = useState(0)
   const [submitted, setSubmitted] = useState(false)
   const playSessionRef = useRef<MorsePlaySession | null>(null)
+  const lastMorseRef = useRef<string>('')
 
   /** 重置题目状态 */
   const resetQuestionState = useCallback((word: string | null) => {
@@ -52,6 +53,8 @@ export default function PracticePage() {
       playSessionRef.current.stop()
       playSessionRef.current = null
     }
+    const newMorse = word ? textToMorse(word) : ''
+    lastMorseRef.current = newMorse
     setCurrentWord(word)
     setAnswer('')
     setSubmitted(false)
@@ -98,6 +101,27 @@ export default function PracticePage() {
   }, [customWords, activeWords, currentWord, resetQuestionState])
 
   useEffect(() => {
+    if (lastMorseRef.current === '') {
+      lastMorseRef.current = currentMorse
+      return
+    }
+    if (currentMorse !== lastMorseRef.current) {
+      lastMorseRef.current = currentMorse
+      const session = playSessionRef.current
+      if (session) {
+        const state = session.getState()
+        if (state === 'playing' || state === 'paused') {
+          session.stop()
+          playSessionRef.current = null
+          setActiveIndex(-1)
+          setVisualResetKey((k) => k + 1)
+          setPlaybackState('idle')
+        }
+      }
+    }
+  }, [currentMorse])
+
+  useEffect(() => {
     return () => {
       if (playSessionRef.current) {
         playSessionRef.current.stop()
@@ -109,6 +133,7 @@ export default function PracticePage() {
   /** 播放当前题目摩斯码 */
   const handlePlay = useCallback(async () => {
     if (!currentMorse || noAvailableWords) return
+    lastMorseRef.current = currentMorse
     setActiveIndex(-1)
     setVisualResetKey((k) => k + 1)
 
@@ -131,22 +156,25 @@ export default function PracticePage() {
 
   /** 暂停播放 */
   const handlePause = useCallback(() => {
-    if (playSessionRef.current && playbackState === 'playing') {
-      playSessionRef.current.pause()
+    const session = playSessionRef.current
+    if (session && session.getState() === 'playing') {
+      session.pause()
     }
-  }, [playbackState])
+  }, [])
 
   /** 继续播放 */
   const handleResume = useCallback(() => {
-    if (playSessionRef.current && playbackState === 'paused') {
-      playSessionRef.current.resume()
+    const session = playSessionRef.current
+    if (session && session.getState() === 'paused') {
+      session.resume()
     }
-  }, [playbackState])
+  }, [])
 
   /** 停止播放 */
   const handleStop = useCallback(() => {
-    if (playSessionRef.current) {
-      playSessionRef.current.stop()
+    const session = playSessionRef.current
+    if (session) {
+      session.stop()
       playSessionRef.current = null
     }
     setActiveIndex(-1)

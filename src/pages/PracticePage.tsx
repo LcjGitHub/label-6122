@@ -3,6 +3,7 @@ import { Card, Input, Button, Space, Typography, Statistic, Row, Col, message, T
 import { SoundOutlined, CheckOutlined, ReloadOutlined, DeleteOutlined, BookOutlined, FireOutlined, PauseOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import MorseVisualizer from '../components/MorseVisualizer'
+import WrongQuestionList from '../components/WrongQuestionList'
 import { getPracticeWordsByDifficulty, textToMorse, type DifficultyLevel } from '../utils/morse'
 import { createPlaySession, type MorsePlaySession, type PlaybackState } from '../utils/audio'
 import { usePracticeStore, calcAccuracy } from '../store/practiceStore'
@@ -25,7 +26,7 @@ function pickRandomWord(wordPool: string[], exclude?: string): string | null {
  * 听码练习页面
  */
 export default function PracticePage() {
-  const { total, correct, streak, difficulty, submitAnswer, resetStats, setDifficulty } = usePracticeStore()
+  const { total, correct, streak, difficulty, submitAnswer, addWrongAnswer, resetStats, setDifficulty } = usePracticeStore()
   const { speed, pitch } = useAudioSettingsStore()
   const { words: customWords } = useWordLibraryStore()
 
@@ -198,9 +199,18 @@ export default function PracticePage() {
     if (isCorrect) {
       message.success('回答正确！')
     } else {
+      addWrongAnswer(currentWord, normalized)
       message.error(`回答错误，正确答案是：${currentWord}`)
     }
   }
+
+  /** 从错题列表中选题练习 */
+  const handlePracticeFromWrong = useCallback(
+    (word: string) => {
+      resetQuestionState(word)
+    },
+    [resetQuestionState],
+  )
 
   const accuracy = calcAccuracy(correct, total)
 
@@ -281,6 +291,8 @@ export default function PracticePage() {
           </Card>
         </Col>
       </Row>
+
+      <WrongQuestionList onPractice={handlePracticeFromWrong} />
 
       <Card>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>

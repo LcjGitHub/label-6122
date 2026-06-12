@@ -176,3 +176,26 @@ export function greedyMorseToText(input: string): string {
 
   return result.join('')
 }
+
+export interface SafeConvertResult {
+  morse: string
+  errorMessage: string
+}
+
+/**
+ * 安全的文本 → 摩斯码转换函数，供页面调用
+ * - 转换成功：返回 { morse: 结果字符串, errorMessage: '' }
+ * - 转换失败：返回 { morse: '', errorMessage: 错误信息 }，不抛出异常
+ * @param text - 原始文本
+ */
+export function safeTextToMorse(text: string): SafeConvertResult {
+  try {
+    const result = textToMorse(text)
+    return { morse: result, errorMessage: '' }
+  } catch (err) {
+    return {
+      morse: '',
+      errorMessage: err instanceof Error ? err.message : '转换失败',
+    }
+  }
+}

@@ -3,7 +3,7 @@ import { Card, Input, Button, Space, Typography, Divider, message } from 'antd'
 import { SwapOutlined, SoundOutlined, ClearOutlined, CopyOutlined } from '@ant-design/icons'
 import MorseVisualizer from '../components/MorseVisualizer'
 import RecordList from '../components/RecordList'
-import { textToMorse, morseToText, isValidMorse } from '../utils/morse'
+import { textToMorse, morseToText, isValidMorse, safeTextToMorse } from '../utils/morse'
 import { playMorse } from '../utils/audio'
 import { copyToClipboard } from '../utils/clipboard'
 import { useConvertRecordStore } from '../store/convertRecordStore'
@@ -37,14 +37,15 @@ export default function ConvertPage() {
         return
       }
       if (text === lastConvertedTextRef.current) return
-      try {
-        const result = textToMorse(text)
-        setMorse(result)
-        setAutoAnimate(true)
-        lastConvertedTextRef.current = text
-      } catch (err) {
-        message.error(err instanceof Error ? err.message : '转换失败')
+      const { morse: result, errorMessage } = safeTextToMorse(text)
+      if (errorMessage) {
+        setMorse('')
+        message.error(errorMessage)
+        return
       }
+      setMorse(result)
+      setAutoAnimate(true)
+      lastConvertedTextRef.current = text
     }, 300)
     return () => {
       if (debounceTimerRef.current) {
@@ -92,6 +93,7 @@ export default function ConvertPage() {
     setMorse(restoredMorse)
     setAutoAnimate(false)
     setActiveIndex(-1)
+    lastConvertedTextRef.current = restoredText
     message.success('已回填记录')
   }, [])
 

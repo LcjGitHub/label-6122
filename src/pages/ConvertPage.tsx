@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Card, Input, Button, Space, Typography, Divider, message } from 'antd'
-import { SwapOutlined, SoundOutlined, ClearOutlined, CopyOutlined } from '@ant-design/icons'
+import { SwapOutlined, SoundOutlined, ClearOutlined, CopyOutlined, PauseOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons'
 import MorseVisualizer from '../components/MorseVisualizer'
 import RecordList from '../components/RecordList'
 import { textToMorse, morseToText, isValidMorse, safeTextToMorse } from '../utils/morse'
-import { playMorse } from '../utils/audio'
+import { createPlaySession, type MorsePlaySession, type PlaybackState } from '../utils/audio'
 import { copyToClipboard } from '../utils/clipboard'
 import { useConvertRecordStore } from '../store/convertRecordStore'
 import { useAudioSettingsStore } from '../store/audioSettingsStore'
@@ -18,11 +18,13 @@ const { Title, Paragraph } = Typography
 export default function ConvertPage() {
   const [text, setText] = useState('')
   const [morse, setMorse] = useState('')
-  const [playing, setPlaying] = useState(false)
+  const [playbackState, setPlaybackState] = useState<PlaybackState>('idle')
   const [activeIndex, setActiveIndex] = useState(-1)
   const [autoAnimate, setAutoAnimate] = useState(false)
+  const [visualResetKey, setVisualResetKey] = useState(0)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastConvertedTextRef = useRef<string>('')
+  const playSessionRef = useRef<MorsePlaySession | null>(null)
   const { addRecord } = useConvertRecordStore()
   const { speed, pitch } = useAudioSettingsStore()
 
@@ -53,6 +55,15 @@ export default function ConvertPage() {
       }
     }
   }, [text])
+
+  useEffect(() => {
+    return () => {
+      if (playSessionRef.current) {
+        playSessionRef.current.stop()
+        playSessionRef.current = null
+      }
+    }
+  }, [])
 
   /** 文本 → 摩斯 */
   const handleTextToMorse = useCallback(() => {
@@ -89,10 +100,16 @@ export default function ConvertPage() {
 
   /** 回填记录到输入框 */
   const handleRestore = useCallback((restoredText: string, restoredMorse: string) => {
+    if (playSessionRef.current) {
+      playSessionRef.current.stop()
+      playSessionRef.current = null
+    }
     setText(restoredText)
     setMorse(restoredMorse)
     setAutoAnimate(false)
     setActiveIndex(-1)
+    setVisualResetKey((k) => k + 1)
+    setPlaybackState('idle')
     lastConvertedTextRef.current = restoredText
     message.success('已回填记录')
   }, [])
@@ -103,25 +120,64 @@ export default function ConvertPage() {
       message.warning('请先输入或转换摩斯码')
       return
     }
-    setPlaying(true)
     setAutoAnimate(false)
     setActiveIndex(-1)
-    try {
-      await playMorse(morse, (_symbol, index) => {
+    setVisualResetKey((k) => k + 1)
+
+    const session = createPlaySession(
+      morse,
+      (_symbol, index) => {
         setActiveIndex(index)
-      }, { speed, pitch })
-    } finally {
-      setPlaying(false)
-      setActiveIndex(-1)
-    }
+      },
+      { speed, pitch },
+      (state) => setPlaybackState(state),
+      () => {
+        setActiveIndex(-1)
+        setPlaybackState('idle')
+        playSessionRef.current = null
+      },
+    )
+    playSessionRef.current = session
+    await session.play()
   }, [morse, speed, pitch])
+
+  /** 暂停播放 */
+  const handlePause = useCallback(() => {
+    if (playSessionRef.current && playbackState === 'playing') {
+      playSessionRef.current.pause()
+    }
+  }, [playbackState])
+
+  /** 继续播放 */
+  const handleResume = useCallback(() => {
+    if (playSessionRef.current && playbackState === 'paused') {
+      playSessionRef.current.resume()
+    }
+  }, [playbackState])
+
+  /** 停止播放 */
+  const handleStop = useCallback(() => {
+    if (playSessionRef.current) {
+      playSessionRef.current.stop()
+      playSessionRef.current = null
+    }
+    setActiveIndex(-1)
+    setVisualResetKey((k) => k + 1)
+    setPlaybackState('idle')
+  }, [])
 
   /** 清空输入 */
   const handleClear = () => {
+    if (playSessionRef.current) {
+      playSessionRef.current.stop()
+      playSessionRef.current = null
+    }
     setText('')
     setMorse('')
     setAutoAnimate(false)
     setActiveIndex(-1)
+    setVisualResetKey((k) => k + 1)
+    setPlaybackState('idle')
     lastConvertedTextRef.current = ''
   }
 
@@ -162,14 +218,51 @@ export default function ConvertPage() {
             <Button icon={<SwapOutlined />} onClick={handleMorseToText}>
               摩斯 → 文本
             </Button>
-            <Button
-              icon={<SoundOutlined />}
-              onClick={handlePlay}
-              loading={playing}
-              disabled={!morse.trim()}
-            >
-              播放
-            </Button>
+            {playbackState === 'idle' && (
+              <Button
+                icon={<SoundOutlined />}
+                onClick={handlePlay}
+                disabled={!morse.trim()}
+              >
+                播放
+              </Button>
+            )}
+            {playbackState === 'playing' && (
+              <>
+                <Button
+                  icon={<PauseOutlined />}
+                  onClick={handlePause}
+                  type="primary"
+                >
+                  暂停
+                </Button>
+                <Button
+                  icon={<StopOutlined />}
+                  onClick={handleStop}
+                  danger
+                >
+                  停止
+                </Button>
+              </>
+            )}
+            {playbackState === 'paused' && (
+              <>
+                <Button
+                  icon={<PlayCircleOutlined />}
+                  onClick={handleResume}
+                  type="primary"
+                >
+                  继续
+                </Button>
+                <Button
+                  icon={<StopOutlined />}
+                  onClick={handleStop}
+                  danger
+                >
+                  停止
+                </Button>
+              </>
+            )}
             <Button icon={<ClearOutlined />} onClick={handleClear}>
               清空
             </Button>
@@ -203,9 +296,10 @@ export default function ConvertPage() {
           <Divider style={{ margin: '8px 0' }}>点划节奏预览</Divider>
 
           <MorseVisualizer
+            key={visualResetKey}
             morse={morse}
             activeIndex={activeIndex}
-            autoAnimate={autoAnimate && !playing}
+            autoAnimate={autoAnimate && playbackState === 'idle'}
           />
 
           <RecordList onRestore={handleRestore} />

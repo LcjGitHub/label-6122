@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Card, Input, Button, Space, Typography, Statistic, Row, Col, message, Tag, Segmented, Alert } from 'antd'
-import { SoundOutlined, CheckOutlined, ReloadOutlined, DeleteOutlined, BookOutlined, FireOutlined } from '@ant-design/icons'
+import { SoundOutlined, CheckOutlined, ReloadOutlined, DeleteOutlined, BookOutlined, FireOutlined, PauseOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import MorseVisualizer from '../components/MorseVisualizer'
 import { getPracticeWordsByDifficulty, textToMorse, type DifficultyLevel } from '../utils/morse'
-import { playMorse } from '../utils/audio'
+import { createPlaySession, type MorsePlaySession, type PlaybackState } from '../utils/audio'
 import { usePracticeStore, calcAccuracy } from '../store/practiceStore'
 import { useAudioSettingsStore } from '../store/audioSettingsStore'
 import { useWordLibraryStore } from '../store/wordLibraryStore'
@@ -40,16 +40,24 @@ export default function PracticePage() {
   const [currentWord, setCurrentWord] = useState<string | null>(() => pickRandomWord(activeWords))
   const currentMorse = useMemo(() => (currentWord ? textToMorse(currentWord) : ''), [currentWord])
   const [answer, setAnswer] = useState('')
-  const [playing, setPlaying] = useState(false)
+  const [playbackState, setPlaybackState] = useState<PlaybackState>('idle')
   const [activeIndex, setActiveIndex] = useState(-1)
+  const [visualResetKey, setVisualResetKey] = useState(0)
   const [submitted, setSubmitted] = useState(false)
+  const playSessionRef = useRef<MorsePlaySession | null>(null)
 
   /** 重置题目状态 */
   const resetQuestionState = useCallback((word: string | null) => {
+    if (playSessionRef.current) {
+      playSessionRef.current.stop()
+      playSessionRef.current = null
+    }
     setCurrentWord(word)
     setAnswer('')
     setSubmitted(false)
     setActiveIndex(-1)
+    setVisualResetKey((k) => k + 1)
+    setPlaybackState('idle')
   }, [])
 
   /** 换题 */
@@ -89,20 +97,62 @@ export default function PracticePage() {
     }
   }, [customWords, activeWords, currentWord, resetQuestionState])
 
+  useEffect(() => {
+    return () => {
+      if (playSessionRef.current) {
+        playSessionRef.current.stop()
+        playSessionRef.current = null
+      }
+    }
+  }, [])
+
   /** 播放当前题目摩斯码 */
   const handlePlay = useCallback(async () => {
     if (!currentMorse || noAvailableWords) return
-    setPlaying(true)
     setActiveIndex(-1)
-    try {
-      await playMorse(currentMorse, (_symbol, index) => {
+    setVisualResetKey((k) => k + 1)
+
+    const session = createPlaySession(
+      currentMorse,
+      (_symbol, index) => {
         setActiveIndex(index)
-      }, { speed, pitch })
-    } finally {
-      setPlaying(false)
-      setActiveIndex(-1)
-    }
+      },
+      { speed, pitch },
+      (state) => setPlaybackState(state),
+      () => {
+        setActiveIndex(-1)
+        setPlaybackState('idle')
+        playSessionRef.current = null
+      },
+    )
+    playSessionRef.current = session
+    await session.play()
   }, [currentMorse, noAvailableWords, speed, pitch])
+
+  /** 暂停播放 */
+  const handlePause = useCallback(() => {
+    if (playSessionRef.current && playbackState === 'playing') {
+      playSessionRef.current.pause()
+    }
+  }, [playbackState])
+
+  /** 继续播放 */
+  const handleResume = useCallback(() => {
+    if (playSessionRef.current && playbackState === 'paused') {
+      playSessionRef.current.resume()
+    }
+  }, [playbackState])
+
+  /** 停止播放 */
+  const handleStop = useCallback(() => {
+    if (playSessionRef.current) {
+      playSessionRef.current.stop()
+      playSessionRef.current = null
+    }
+    setActiveIndex(-1)
+    setVisualResetKey((k) => k + 1)
+    setPlaybackState('idle')
+  }, [])
 
   /** 提交答案 */
   const handleSubmit = () => {
@@ -207,19 +257,68 @@ export default function PracticePage() {
       <Card>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <div style={{ textAlign: 'center' }}>
-            <Button
-              type="primary"
-              size="large"
-              icon={<SoundOutlined />}
-              onClick={handlePlay}
-              loading={playing}
-              disabled={noAvailableWords || !currentWord}
-            >
-              播放摩斯码
-            </Button>
+            <Space wrap style={{ justifyContent: 'center' }}>
+              {playbackState === 'idle' && (
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<SoundOutlined />}
+                  onClick={handlePlay}
+                  disabled={noAvailableWords || !currentWord}
+                >
+                  播放摩斯码
+                </Button>
+              )}
+              {playbackState === 'playing' && (
+                <>
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<PauseOutlined />}
+                    onClick={handlePause}
+                  >
+                    暂停
+                  </Button>
+                  <Button
+                    size="large"
+                    icon={<StopOutlined />}
+                    onClick={handleStop}
+                    danger
+                  >
+                    停止
+                  </Button>
+                </>
+              )}
+              {playbackState === 'paused' && (
+                <>
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<PlayCircleOutlined />}
+                    onClick={handleResume}
+                  >
+                    继续
+                  </Button>
+                  <Button
+                    size="large"
+                    icon={<StopOutlined />}
+                    onClick={handleStop}
+                    danger
+                  >
+                    停止
+                  </Button>
+                </>
+              )}
+            </Space>
           </div>
 
-          {currentWord && <MorseVisualizer morse={currentMorse} activeIndex={activeIndex} />}
+          {currentWord && (
+            <MorseVisualizer
+              key={visualResetKey}
+              morse={currentMorse}
+              activeIndex={activeIndex}
+            />
+          )}
 
           <div>
             <Text strong>你的答案</Text>

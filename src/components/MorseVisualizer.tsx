@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { parseMorseSymbols } from '../utils/morse'
 import { getTiming } from '../utils/audio'
@@ -20,23 +20,27 @@ export default function MorseVisualizer({
   const [animIndex, setAnimIndex] = useState(-1)
   const audioSettings = useAudioSettingsStore()
 
+  const setAnimIndexSafe = useCallback((index: number) => {
+    setAnimIndex(index)
+  }, [])
+
   useEffect(() => {
     if (!autoAnimate || !morse.trim()) {
-      setAnimIndex(-1)
       return
     }
 
     const parsed = parseMorseSymbols(morse)
     const timing = getTiming(audioSettings)
     let cancelled = false
+    let animationFrame: ReturnType<typeof setTimeout>
 
     const run = async () => {
       while (!cancelled) {
         for (let i = 0; i < parsed.length; i++) {
           if (cancelled) break
-          const sym = parsed[i]
-          setAnimIndex(i)
+          setAnimIndexSafe(i)
 
+          const sym = parsed[i]
           const duration =
             sym === 'dot'
               ? timing.dot + timing.symbolGap
@@ -46,18 +50,24 @@ export default function MorseVisualizer({
                   ? timing.letterGap
                   : timing.wordGap
 
-          await new Promise((r) => setTimeout(r, duration))
+          await new Promise<void>((r) => {
+            animationFrame = setTimeout(r, duration)
+          })
         }
-        setAnimIndex(-1)
-        await new Promise((r) => setTimeout(r, 500))
+        if (cancelled) break
+        setAnimIndexSafe(-1)
+        await new Promise<void>((r) => {
+          animationFrame = setTimeout(r, 500)
+        })
       }
     }
 
     run()
     return () => {
       cancelled = true
+      clearTimeout(animationFrame)
     }
-  }, [autoAnimate, morse, audioSettings])
+  }, [autoAnimate, morse, audioSettings, setAnimIndexSafe])
 
   if (!morse.trim()) {
     return <div className="morse-visualizer empty">输入或转换后将在此展示点划节奏</div>

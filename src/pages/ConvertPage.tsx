@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Card, Input, Button, Space, Typography, Divider, message } from 'antd'
+import { Card, Input, Button, Space, Typography, Divider, message, Switch, Slider } from 'antd'
 import { SwapOutlined, SoundOutlined, ClearOutlined, CopyOutlined, PauseOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons'
 import MorseVisualizer from '../components/MorseVisualizer'
 import RecordList from '../components/RecordList'
@@ -22,6 +22,8 @@ export default function ConvertPage() {
   const [activeIndex, setActiveIndex] = useState(-1)
   const [autoAnimate, setAutoAnimate] = useState(false)
   const [visualResetKey, setVisualResetKey] = useState(0)
+  const [slowDemoMode, setSlowDemoMode] = useState(false)
+  const [demoSpeedMultiplier, setDemoSpeedMultiplier] = useState(1)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastConvertedTextRef = useRef<string>('')
   const lastMorseRef = useRef<string>('')
@@ -323,11 +325,50 @@ export default function ConvertPage() {
 
           <Divider style={{ margin: '8px 0' }}>点划节奏预览</Divider>
 
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Typography.Text>慢速演示模式</Typography.Text>
+              <Switch
+                checked={slowDemoMode}
+                onChange={(checked) => {
+                  setSlowDemoMode(checked)
+                  if (checked) {
+                    if (playSessionRef.current) {
+                      playSessionRef.current.stop()
+                      playSessionRef.current = null
+                    }
+                    setActiveIndex(-1)
+                    setPlaybackState('idle')
+                    setVisualResetKey((k) => k + 1)
+                  }
+                }}
+              />
+            </div>
+            {slowDemoMode && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 200 }}>
+                <Typography.Text style={{ whiteSpace: 'nowrap' }}>速度</Typography.Text>
+                <Slider
+                  min={0.5}
+                  max={2}
+                  step={0.1}
+                  value={demoSpeedMultiplier}
+                  onChange={setDemoSpeedMultiplier}
+                  style={{ flex: 1 }}
+                  tooltip={{ formatter: (value) => `${value}x` }}
+                />
+                <Typography.Text style={{ minWidth: 48, textAlign: 'right' }}>
+                  {demoSpeedMultiplier.toFixed(1)}x
+                </Typography.Text>
+              </div>
+            )}
+          </div>
+
           <MorseVisualizer
             key={visualResetKey}
             morse={morse}
             activeIndex={activeIndex}
-            autoAnimate={autoAnimate && playbackState === 'idle'}
+            autoAnimate={slowDemoMode ? !!morse.trim() : autoAnimate && playbackState === 'idle'}
+            speedMultiplier={slowDemoMode ? demoSpeedMultiplier : 1}
           />
 
           <RecordList onRestore={handleRestore} />

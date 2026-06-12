@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { parseMorseSymbols } from '../utils/morse'
-import { getTiming } from '../utils/audio'
+import { getTiming, getScaledTiming } from '../utils/audio'
 import { useAudioSettingsStore } from '../store/audioSettingsStore'
 import './MorseVisualizer.css'
 
@@ -10,6 +10,7 @@ interface MorseVisualizerProps {
   activeIndex?: number
   autoAnimate?: boolean
   resetKey?: number
+  speedMultiplier?: number
 }
 
 export default function MorseVisualizer({
@@ -17,6 +18,7 @@ export default function MorseVisualizer({
   activeIndex = -1,
   autoAnimate = false,
   resetKey = 0,
+  speedMultiplier = 1,
 }: MorseVisualizerProps) {
   const symbols = parseMorseSymbols(morse)
   const [animIndex, setAnimIndex] = useState(-1)
@@ -51,7 +53,8 @@ export default function MorseVisualizer({
     }
 
     const parsed = parseMorseSymbols(morse)
-    const timing = getTiming(audioSettings)
+    const baseTiming = getTiming(audioSettings)
+    const timing = getScaledTiming(baseTiming, speedMultiplier)
     let cancelled = false
     let animationFrame: ReturnType<typeof setTimeout>
     const startedResetKey = resetKeyRef.current
@@ -89,7 +92,7 @@ export default function MorseVisualizer({
       cancelled = true
       clearTimeout(animationFrame)
     }
-  }, [autoAnimate, morse, audioSettings, setAnimIndexSafe])
+  }, [autoAnimate, morse, audioSettings, speedMultiplier, setAnimIndexSafe])
 
   if (!morse.trim()) {
     return <div className="morse-visualizer empty">输入或转换后将在此展示点划节奏</div>

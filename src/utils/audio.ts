@@ -339,4 +339,17 @@ export function getTiming(settings?: AudioSettings): MorseTiming {
   return settings ? getTimingFromSettings(settings) : DEFAULT_TIMING
 }
 
+export function getScaledTiming(baseTiming: MorseTiming, multiplier: number): MorseTiming {
+  const safeMultiplier = Math.max(0.5, Math.min(2, multiplier))
+  const scale = 1 / safeMultiplier
+  return {
+    dot: Math.round(baseTiming.dot * scale),
+    dash: Math.round(baseTiming.dash * scale),
+    letterGap: Math.round(baseTiming.letterGap * scale),
+    wordGap: Math.round(baseTiming.wordGap * scale),
+    symbolGap: Math.round(baseTiming.symbolGap * scale),
+    frequency: baseTiming.frequency,
+  }
+}
+
 export { DEFAULT_TIMING as TIMING }

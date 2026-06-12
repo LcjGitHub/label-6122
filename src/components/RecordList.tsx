@@ -71,19 +71,31 @@ export default function RecordList({ onRestore }: RecordListProps) {
     return (
       <List.Item
         key={record.id}
+        onClick={() => handleRestore(record)}
         style={{
           padding: '12px 16px',
           borderRadius: 8,
           marginBottom: 8,
           background: '#fafafa',
           border: '1px solid #f0f0f0',
+          cursor: 'pointer',
+          transition: 'background 0.2s',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = '#f0f7ff'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = '#fafafa'
         }}
         actions={[
           <Tooltip key="restore" title="回填到输入框">
             <Button
               type="link"
               size="small"
-              onClick={() => handleRestore(record)}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleRestore(record)
+              }}
             >
               回填
             </Button>
@@ -100,6 +112,7 @@ export default function RecordList({ onRestore }: RecordListProps) {
               size="small"
               danger
               icon={<DeleteOutlined />}
+              onClick={(e) => e.stopPropagation()}
             >
               删除
             </Button>

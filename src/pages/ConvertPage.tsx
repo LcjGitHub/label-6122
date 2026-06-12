@@ -27,7 +27,9 @@ export default function ConvertPage() {
       const result = textToMorse(text)
       setMorse(result)
       setAutoAnimate(true)
-      addRecord(text, result, 'text-to-morse')
+      if (text.trim() || result.trim()) {
+        addRecord(text, result, 'text-to-morse')
+      }
       message.success('转换成功')
     } catch (err) {
       message.error(err instanceof Error ? err.message : '转换失败')
@@ -43,7 +45,9 @@ export default function ConvertPage() {
     try {
       const result = morseToText(morse)
       setText(result)
-      addRecord(result, morse, 'morse-to-text')
+      if (morse.trim() || result.trim()) {
+        addRecord(result, morse, 'morse-to-text')
+      }
       message.success('转换成功')
     } catch (err) {
       message.error(err instanceof Error ? err.message : '转换失败')

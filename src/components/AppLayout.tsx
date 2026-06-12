@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Layout, Menu, Button, Tooltip } from 'antd'
-import { SwapOutlined, SoundOutlined, TableOutlined, EditOutlined, SettingOutlined } from '@ant-design/icons'
+import { SwapOutlined, SoundOutlined, TableOutlined, EditOutlined, SettingOutlined, BookOutlined } from '@ant-design/icons'
 import { Link, useLocation, Outlet } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import SettingsDrawer from './SettingsDrawer'
@@ -27,6 +27,11 @@ export default function AppLayout() {
       key: '/斜杠敲码',
       icon: <EditOutlined />,
       label: <Link to="/斜杠敲码">斜杠敲码</Link>,
+    },
+    {
+      key: '/斜杠词库',
+      icon: <BookOutlined />,
+      label: <Link to="/斜杠词库">斜杠词库</Link>,
     },
     {
       key: '/对照表',

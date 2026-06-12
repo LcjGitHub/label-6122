@@ -4,6 +4,7 @@ import ConvertPage from './pages/ConvertPage'
 import PracticePage from './pages/PracticePage'
 import ChartPage from './pages/ChartPage'
 import TapCodePage from './pages/TapCodePage'
+import WordLibraryPage from './pages/WordLibraryPage'
 
 export default function App() {
   return (
@@ -12,8 +13,9 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<ConvertPage />} />
           <Route path="/practice" element={<PracticePage />} />
-          <Route path="/对照表" element={<ChartPage />} />
           <Route path="/斜杠敲码" element={<TapCodePage />} />
+          <Route path="/斜杠词库" element={<WordLibraryPage />} />
+          <Route path="/对照表" element={<ChartPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

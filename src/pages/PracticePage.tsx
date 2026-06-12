@@ -1,21 +1,22 @@
-import { useState, useCallback, useEffect } from 'react'
-import { Card, Input, Button, Space, Typography, Statistic, Row, Col, message } from 'antd'
-import { SoundOutlined, CheckOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons'
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { Card, Input, Button, Space, Typography, Statistic, Row, Col, message, Tag } from 'antd'
+import { SoundOutlined, CheckOutlined, ReloadOutlined, DeleteOutlined, BookOutlined } from '@ant-design/icons'
+import { Link } from 'react-router-dom'
 import MorseVisualizer from '../components/MorseVisualizer'
 import { PRACTICE_WORDS, textToMorse } from '../utils/morse'
 import { playMorse } from '../utils/audio'
 import { usePracticeStore, calcAccuracy } from '../store/practiceStore'
 import { useAudioSettingsStore } from '../store/audioSettingsStore'
+import { useWordLibraryStore } from '../store/wordLibraryStore'
 
 const { Title, Paragraph, Text } = Typography
 
 /**
  * 从词库随机选取一个单词
  */
-function pickRandomWord(exclude?: string): string {
-  const pool = exclude
-    ? PRACTICE_WORDS.filter((w) => w !== exclude)
-    : PRACTICE_WORDS
+function pickRandomWord(wordPool: string[], exclude?: string): string {
+  const pool = exclude ? wordPool.filter((w) => w !== exclude) : wordPool
+  if (pool.length === 0) return wordPool[0] || ''
   return pool[Math.floor(Math.random() * pool.length)]
 }
 
@@ -25,7 +26,12 @@ function pickRandomWord(exclude?: string): string {
 export default function PracticePage() {
   const { total, correct, submitAnswer, resetStats } = usePracticeStore()
   const { speed, pitch } = useAudioSettingsStore()
-  const [currentWord, setCurrentWord] = useState(() => pickRandomWord())
+  const { words: customWords, getActiveWords } = useWordLibraryStore()
+
+  const activeWords = useMemo(() => getActiveWords(), [customWords, getActiveWords])
+  const usingCustom = customWords.length > 0
+
+  const [currentWord, setCurrentWord] = useState(() => pickRandomWord(activeWords))
   const [currentMorse, setCurrentMorse] = useState(() => textToMorse(currentWord))
   const [answer, setAnswer] = useState('')
   const [playing, setPlaying] = useState(false)
@@ -33,14 +39,23 @@ export default function PracticePage() {
   const [submitted, setSubmitted] = useState(false)
 
   /** 换题 */
-  const nextQuestion = useCallback((exclude?: string) => {
-    const word = pickRandomWord(exclude)
+  const nextQuestion = useCallback(
+    (exclude?: string) => {
+      const word = pickRandomWord(activeWords, exclude)
+      setCurrentWord(word)
+      setCurrentMorse(textToMorse(word))
+      setAnswer('')
+      setSubmitted(false)
+      setActiveIndex(-1)
+    },
+    [activeWords],
+  )
+
+  useEffect(() => {
+    const word = pickRandomWord(activeWords)
     setCurrentWord(word)
     setCurrentMorse(textToMorse(word))
-    setAnswer('')
-    setSubmitted(false)
-    setActiveIndex(-1)
-  }, [])
+  }, [activeWords])
 
   useEffect(() => {
     setCurrentMorse(textToMorse(currentWord))
@@ -83,9 +98,22 @@ export default function PracticePage() {
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
-      <Title level={2}>听码练习</Title>
+      <Space align="center" style={{ marginBottom: 8 }}>
+        <Title level={2} style={{ margin: 0 }}>
+          听码练习
+        </Title>
+        <Tag icon={<BookOutlined />} color={usingCustom ? 'blue' : 'default'}>
+          {usingCustom ? '自定义词库' : '系统默认词库'}
+          <Link to="/斜杠词库" style={{ marginLeft: 6 }}>
+            管理
+          </Link>
+        </Tag>
+      </Space>
       <Paragraph type="secondary">
         点击播放听取摩斯电码，输入你听到的内容并提交。统计将保存在本地。
+        {usingCustom
+          ? `当前使用你的自定义词库（共 ${activeWords.length} 个单词）。`
+          : `当前使用系统默认词库（共 ${PRACTICE_WORDS.length} 个单词），你可以在「斜杠词库」中添加自定义单词。`}
       </Paragraph>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>

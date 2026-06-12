@@ -44,6 +44,7 @@ export default function WrongQuestionList({ onPractice }: WrongQuestionListProps
   const hasWrongAnswers = wrongAnswers.length > 0
 
   const handlePractice = (record: WrongAnswer) => {
+    setActiveKey([])
     onPractice(record.word)
   }
 

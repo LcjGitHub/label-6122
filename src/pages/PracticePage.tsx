@@ -47,6 +47,7 @@ export default function PracticePage() {
   const [submitted, setSubmitted] = useState(false)
   const playSessionRef = useRef<MorsePlaySession | null>(null)
   const lastMorseRef = useRef<string>('')
+  const answerCardRef = useRef<HTMLDivElement>(null)
 
   /** 重置题目状态 */
   const resetQuestionState = useCallback((word: string | null) => {
@@ -186,7 +187,8 @@ export default function PracticePage() {
   /** 提交答案 */
   const handleSubmit = () => {
     if (noAvailableWords || !currentWord) return
-    const normalized = answer.trim().toUpperCase()
+    const trimmed = answer.trim()
+    const normalized = trimmed.toUpperCase()
     if (!normalized) {
       message.warning('请输入答案')
       return
@@ -199,7 +201,7 @@ export default function PracticePage() {
     if (isCorrect) {
       message.success('回答正确！')
     } else {
-      addWrongAnswer(currentWord, normalized)
+      addWrongAnswer(currentWord, trimmed)
       message.error(`回答错误，正确答案是：${currentWord}`)
     }
   }
@@ -208,6 +210,9 @@ export default function PracticePage() {
   const handlePracticeFromWrong = useCallback(
     (word: string) => {
       resetQuestionState(word)
+      setTimeout(() => {
+        answerCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 100)
     },
     [resetQuestionState],
   )
@@ -294,7 +299,7 @@ export default function PracticePage() {
 
       <WrongQuestionList onPractice={handlePracticeFromWrong} />
 
-      <Card>
+      <Card ref={answerCardRef}>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
           <div style={{ textAlign: 'center' }}>
             <Space wrap style={{ justifyContent: 'center' }}>

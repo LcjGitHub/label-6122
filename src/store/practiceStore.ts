@@ -65,7 +65,7 @@ export const usePracticeStore = create<PracticeState>()(
         set((state) => ({
           wrongAnswers: state.wrongAnswers.filter((w) => w.id !== id),
         })),
-      resetStats: () => set({ total: 0, correct: 0, streak: 0 }),
+      resetStats: () => set({ total: 0, correct: 0, streak: 0, wrongAnswers: [] }),
       setDifficulty: (difficulty) => set({ difficulty }),
     }),
     { name: 'morse-practice-stats' },

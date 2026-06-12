@@ -3,13 +3,9 @@ import { Button, Space, Typography, message } from 'antd'
 import {
   PlusOutlined,
   MinusOutlined,
-  DeleteOutlined,
-  ClearOutlined,
   ThunderboltOutlined,
-  VerticalRightOutlined,
-  ColumnWidthOutlined,
 } from '@ant-design/icons'
-import { slashMorseToText } from '../utils/morse'
+import { greedyParseDotDash } from '../utils/morse'
 
 const { Text } = Typography
 
@@ -31,43 +27,15 @@ export default function TapCodeInputPanel({ onDecode }: TapCodeInputPanelProps) 
     setResult('')
   }, [])
 
-  const handleLetterSep = useCallback(() => {
-    setSequence((prev) => {
-      if (prev.endsWith('/')) return prev
-      return prev + '/'
-    })
-    setResult('')
-  }, [])
-
-  const handleWordSep = useCallback(() => {
-    setSequence((prev) => {
-      if (prev.endsWith('//')) return prev
-      if (prev.endsWith('/')) return prev + '/'
-      return prev + '//'
-    })
-    setResult('')
-  }, [])
-
-  const handleBackspace = useCallback(() => {
-    setSequence((prev) => prev.slice(0, -1))
-    setResult('')
-  }, [])
-
-  const handleClear = useCallback(() => {
-    setSequence('')
-    setResult('')
-  }, [])
-
   const handleDecode = useCallback(() => {
     if (!sequence.trim()) {
       message.warning('请先输入点划序列')
       return
     }
     try {
-      const decoded = slashMorseToText(sequence)
+      const decoded = greedyParseDotDash(sequence)
       setResult(decoded)
       onDecode?.(decoded)
-      message.success('解码成功')
     } catch (err) {
       message.error(err instanceof Error ? err.message : '解码失败')
       setResult('')
@@ -109,7 +77,7 @@ export default function TapCodeInputPanel({ onDecode }: TapCodeInputPanelProps) 
           size="large"
           icon={<PlusOutlined />}
           onClick={handleDot}
-          style={{ minWidth: 100 }}
+          style={{ minWidth: 120 }}
         >
           点
         </Button>
@@ -117,31 +85,9 @@ export default function TapCodeInputPanel({ onDecode }: TapCodeInputPanelProps) 
           size="large"
           icon={<MinusOutlined />}
           onClick={handleDash}
-          style={{ minWidth: 100 }}
+          style={{ minWidth: 120 }}
         >
           划
-        </Button>
-        <Button
-          size="large"
-          icon={<VerticalRightOutlined />}
-          onClick={handleLetterSep}
-          style={{ minWidth: 100 }}
-        >
-          字母分隔 /
-        </Button>
-        <Button
-          size="large"
-          icon={<ColumnWidthOutlined />}
-          onClick={handleWordSep}
-          style={{ minWidth: 100 }}
-        >
-          单词分隔 //
-        </Button>
-        <Button size="large" icon={<DeleteOutlined />} onClick={handleBackspace}>
-          退格
-        </Button>
-        <Button size="large" icon={<ClearOutlined />} onClick={handleClear} danger>
-          清空
         </Button>
       </Space>
 
@@ -179,7 +125,7 @@ export default function TapCodeInputPanel({ onDecode }: TapCodeInputPanelProps) 
 
       <div style={{ color: '#999', fontSize: 12, textAlign: 'center' }}>
         <Text type="secondary">
-          操作说明：点击「点」或「划」输入符号，使用「字母分隔 /」和「单词分隔 //」进行分隔，输入完成后点击「解码」还原文本
+          操作说明：点击「点」或「划」依次输入符号，输入完成后点击「解码」还原文本
         </Text>
       </div>
     </Space>

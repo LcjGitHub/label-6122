@@ -126,50 +126,40 @@ export function parseMorseSymbols(morse: string): Array<'dot' | 'dash' | 'letter
 }
 
 /**
- * 校验斜杠敲码格式是否合法
- * 规则：仅允许 . - 两种符号，字母间用单斜杠 / 分隔，单词间用双斜杠 // 分隔
- * @param input - 斜杠敲码字符串
- */
-export function isValidSlashMorse(input: string): boolean {
-  if (!input.trim()) return true
-  return /^[.\-\/]+$/.test(input.trim())
-}
-
-/**
- * 将斜杠敲码（连续点划串 + 斜杠分隔）解析为文本
- * 规则：
- *   - . 和 - 组成字母的点划序列
- *   - 单斜杠 / 分隔字母
- *   - 双斜杠 // 分隔单词
- *   例：...././.-../.-../---//.--/---/.-./.-../-..  →  HELLO WORLD
- * @param input - 斜杠敲码字符串
+ * 贪心解析无分隔符的连续点划串为文本
+ * 从左到右依次匹配 REVERSE_MORSE_MAP 中最长的合法摩斯码
+ * 例：...---... → S O S → SOS
+ * @param input - 仅含 . 和 - 的连续字符串
  * @returns 解码后的文本
  */
-export function slashMorseToText(input: string): string {
+export function greedyParseDotDash(input: string): string {
   const trimmed = input.trim()
   if (!trimmed) return ''
 
-  if (!isValidSlashMorse(trimmed)) {
-    throw new Error('格式错误：仅允许使用 . - / 三种字符')
+  if (!/^[.\-]+$/.test(trimmed)) {
+    throw new Error('格式错误：仅允许使用点（.）和划（-）')
   }
 
-  const words = trimmed.split(/\/{2,}/)
+  const maxLen = Math.max(...Object.keys(REVERSE_MORSE_MAP).map((k) => k.length))
+  const result: string[] = []
+  let pos = 0
 
-  return words
-    .map((word) => {
-      const letterCodes = word.split('/').filter((code) => code.length > 0)
-      return letterCodes
-        .map((code) => {
-          if (!/^[.\-]+$/.test(code)) {
-            throw new Error(`格式错误：无效的点划序列 "${code}"`)
-          }
-          const char = REVERSE_MORSE_MAP[code]
-          if (!char) {
-            throw new Error(`无法识别的摩斯码：${code}`)
-          }
-          return char
-        })
-        .join('')
-    })
-    .join(' ')
+  while (pos < trimmed.length) {
+    let matched = false
+    for (let len = Math.min(maxLen, trimmed.length - pos); len >= 1; len--) {
+      const fragment = trimmed.slice(pos, pos + len)
+      const char = REVERSE_MORSE_MAP[fragment]
+      if (char) {
+        result.push(char)
+        pos += len
+        matched = true
+        break
+      }
+    }
+    if (!matched) {
+      throw new Error(`无法识别的序列：从位置 ${pos + 1} 起「${trimmed.slice(pos, pos + maxLen)}」无法匹配任何字母`)
+    }
+  }
+
+  return result.join('')
 }

@@ -157,7 +157,7 @@ export default function WordLibraryPage() {
           <Input
             size="large"
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={(e) => setInputValue(e.target.value.toUpperCase())}
             onPressEnter={handleAdd}
             placeholder="输入单词（仅字母与数字，自动转大写）"
             maxLength={50}

@@ -3,7 +3,7 @@ import { Card, Input, Button, Space, Typography, Statistic, Row, Col, message, T
 import { SoundOutlined, CheckOutlined, ReloadOutlined, DeleteOutlined, BookOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import MorseVisualizer from '../components/MorseVisualizer'
-import { PRACTICE_WORDS, textToMorse } from '../utils/morse'
+import { getActivePracticeWords, textToMorse } from '../utils/morse'
 import { playMorse } from '../utils/audio'
 import { usePracticeStore, calcAccuracy } from '../store/practiceStore'
 import { useAudioSettingsStore } from '../store/audioSettingsStore'
@@ -26,9 +26,12 @@ function pickRandomWord(wordPool: string[], exclude?: string): string {
 export default function PracticePage() {
   const { total, correct, submitAnswer, resetStats } = usePracticeStore()
   const { speed, pitch } = useAudioSettingsStore()
-  const { words: customWords, getActiveWords } = useWordLibraryStore()
+  const { words: customWords } = useWordLibraryStore()
 
-  const activeWords = useMemo(() => getActiveWords(), [customWords, getActiveWords])
+  const activeWords = useMemo(() => {
+    void customWords
+    return getActivePracticeWords()
+  }, [customWords])
   const usingCustom = customWords.length > 0
 
   const [currentWord, setCurrentWord] = useState(() => pickRandomWord(activeWords))
@@ -104,16 +107,16 @@ export default function PracticePage() {
         </Title>
         <Tag icon={<BookOutlined />} color={usingCustom ? 'blue' : 'default'}>
           {usingCustom ? '自定义词库' : '系统默认词库'}
-          <Link to="/斜杠词库" style={{ marginLeft: 6 }}>
-            管理
-          </Link>
         </Tag>
+        <Link to="/斜杠词库" style={{ fontSize: 14 }}>
+          管理词库
+        </Link>
       </Space>
       <Paragraph type="secondary">
         点击播放听取摩斯电码，输入你听到的内容并提交。统计将保存在本地。
         {usingCustom
           ? `当前使用你的自定义词库（共 ${activeWords.length} 个单词）。`
-          : `当前使用系统默认词库（共 ${PRACTICE_WORDS.length} 个单词），你可以在「斜杠词库」中添加自定义单词。`}
+          : `当前使用系统默认词库（共 ${activeWords.length} 个单词），你可以在「斜杠词库」中添加自定义单词。`}
       </Paragraph>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>

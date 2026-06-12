@@ -1,4 +1,5 @@
 import morseData from '../mock/morse-words.json'
+import { useWordLibraryStore } from '../store/wordLibraryStore'
 
 /** 字母/数字 → 摩斯码映射表 */
 export const MORSE_MAP: Record<string, string> = morseData.alphabet
@@ -8,8 +9,17 @@ export const REVERSE_MORSE_MAP: Record<string, string> = Object.fromEntries(
   Object.entries(MORSE_MAP).map(([char, code]) => [code, char]),
 )
 
-/** 练习用词库 */
+/** 练习用默认词库 */
 export const PRACTICE_WORDS: string[] = morseData.words
+
+/**
+ * 获取当前生效的练习词库
+ * 优先读取词库状态模块中的用户词库，若为空则回退到默认模拟数据
+ */
+export function getActivePracticeWords(): string[] {
+  const words = useWordLibraryStore.getState().words
+  return words.length > 0 ? words : PRACTICE_WORDS
+}
 
 /**
  * 将文本编码为摩斯电码

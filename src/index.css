@@ -15,3 +15,16 @@ body {
 #root {
   min-height: 100vh;
 }
+
+.morse-table-row {
+  transition: background-color 0.2s ease;
+}
+
+.morse-table-row:hover {
+  background-color: #f0f5ff !important;
+}
+
+.morse-table-row-active {
+  background-color: #e6f4ff !important;
+  transition: background-color 0.15s ease;
+}

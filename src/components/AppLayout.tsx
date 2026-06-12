@@ -1,13 +1,10 @@
 import { Layout, Menu } from 'antd'
-import { SwapOutlined, SoundOutlined } from '@ant-design/icons'
+import { SwapOutlined, SoundOutlined, TableOutlined } from '@ant-design/icons'
 import { Link, useLocation, Outlet } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 const { Header, Content, Footer } = Layout
 
-/**
- * 应用全局布局，含顶部导航
- */
 export default function AppLayout() {
   const location = useLocation()
 
@@ -21,6 +18,11 @@ export default function AppLayout() {
       key: '/practice',
       icon: <SoundOutlined />,
       label: <Link to="/practice">听码练习</Link>,
+    },
+    {
+      key: '/对照表',
+      icon: <TableOutlined />,
+      label: <Link to="/对照表">对照表</Link>,
     },
   ]
 

@@ -1,4 +1,4 @@
-import { parseMorseSymbols } from './morse'
+import { parseMorseSymbols, MORSE_MAP } from './morse'
 
 /** 摩斯播放时序配置（毫秒） */
 const TIMING = {
@@ -99,6 +99,12 @@ export async function playSingleSymbol(type: 'dot' | 'dash'): Promise<void> {
     await ctx.resume()
   }
   await playTone(type === 'dot' ? TIMING.dot : TIMING.dash)
+}
+
+export async function playChar(char: string, onSymbol?: (symbol: 'dot' | 'dash' | 'letterGap' | 'wordGap', index: number) => void): Promise<void> {
+  const morse = MORSE_MAP[char.toUpperCase()]
+  if (!morse) return
+  await playMorse(morse, onSymbol)
 }
 
 /** 导出时序常量供动画组件使用 */

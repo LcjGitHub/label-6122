@@ -2,10 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import AppLayout from './components/AppLayout'
 import ConvertPage from './pages/ConvertPage'
 import PracticePage from './pages/PracticePage'
+import ChartPage from './pages/ChartPage'
 
-/**
- * 应用根组件，配置路由
- */
 export default function App() {
   return (
     <BrowserRouter>
@@ -13,6 +11,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<ConvertPage />} />
           <Route path="/practice" element={<PracticePage />} />
+          <Route path="/对照表" element={<ChartPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

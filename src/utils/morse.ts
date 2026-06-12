@@ -97,7 +97,7 @@ export function parseDotDashString(input: string): string {
   const result: string[] = []
 
   for (const token of tokens) {
-    if (!/^[.\-]+$/.test(token)) {
+    if (!/^[.-]+$/.test(token)) {
       throw new Error(`无效的点划序列: ${token}`)
     }
     const char = REVERSE_MORSE_MAP[token]
@@ -146,7 +146,7 @@ export function greedyMorseToText(input: string): string {
   const trimmed = input.trim()
   if (!trimmed) return ''
 
-  if (!/^[.\-]+$/.test(trimmed)) {
+  if (!/^[.-]+$/.test(trimmed)) {
     throw new Error('格式错误：仅允许使用点（.）和划（-）')
   }
 

@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Card, Input, Button, Space, Typography, Divider, message } from 'antd'
-import { SwapOutlined, SoundOutlined, ClearOutlined } from '@ant-design/icons'
+import { SwapOutlined, SoundOutlined, ClearOutlined, CopyOutlined } from '@ant-design/icons'
 import MorseVisualizer from '../components/MorseVisualizer'
 import RecordList from '../components/RecordList'
 import { textToMorse, morseToText, isValidMorse } from '../utils/morse'
 import { playMorse } from '../utils/audio'
+import { copyToClipboard } from '../utils/clipboard'
 import { useConvertRecordStore } from '../store/convertRecordStore'
 import { useAudioSettingsStore } from '../store/audioSettingsStore'
 
@@ -20,8 +21,37 @@ export default function ConvertPage() {
   const [playing, setPlaying] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [autoAnimate, setAutoAnimate] = useState(false)
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastConvertedTextRef = useRef<string>('')
   const { addRecord } = useConvertRecordStore()
   const { speed, pitch } = useAudioSettingsStore()
+
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      if (!text.trim()) {
+        setMorse('')
+        lastConvertedTextRef.current = ''
+        return
+      }
+      if (text === lastConvertedTextRef.current) return
+      try {
+        const result = textToMorse(text)
+        setMorse(result)
+        setAutoAnimate(true)
+        lastConvertedTextRef.current = text
+      } catch (err) {
+        message.error(err instanceof Error ? err.message : '转换失败')
+      }
+    }, 300)
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [text])
 
   /** 文本 → 摩斯 */
   const handleTextToMorse = useCallback(() => {
@@ -90,7 +120,18 @@ export default function ConvertPage() {
     setMorse('')
     setAutoAnimate(false)
     setActiveIndex(-1)
+    lastConvertedTextRef.current = ''
   }
+
+  /** 复制摩斯码到剪贴板 */
+  const handleCopyMorse = useCallback(async () => {
+    const result = await copyToClipboard(morse)
+    if (result.success) {
+      message.success(result.message)
+    } else {
+      message.error(result.message)
+    }
+  }, [morse])
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
@@ -133,7 +174,18 @@ export default function ConvertPage() {
           </Space>
 
           <div>
-            <Typography.Text strong>摩斯码</Typography.Text>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Typography.Text strong>摩斯码</Typography.Text>
+              <Button
+                type="text"
+                icon={<CopyOutlined />}
+                onClick={handleCopyMorse}
+                disabled={!morse.trim()}
+                size="small"
+              >
+                复制
+              </Button>
+            </div>
             <TextArea
               rows={4}
               value={morse}
@@ -142,7 +194,7 @@ export default function ConvertPage() {
                 setAutoAnimate(false)
               }}
               placeholder="输入摩斯码，如 .... . .-.. .-.. --- / .-- --- .-. .-.. -.."
-              style={{ marginTop: 8, fontFamily: 'monospace' }}
+              style={{ fontFamily: 'monospace' }}
             />
           </div>
 

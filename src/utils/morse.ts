@@ -12,6 +12,28 @@ export const REVERSE_MORSE_MAP: Record<string, string> = Object.fromEntries(
 /** 练习用默认词库 */
 export const PRACTICE_WORDS: string[] = morseData.words
 
+/** 难度等级 */
+export type DifficultyLevel = 'easy' | 'normal' | 'hard'
+
+/**
+ * 根据难度筛选单词
+ * - easy: 长度 ≤ 4
+ * - normal: 4 ≤ 长度 ≤ 6
+ * - hard: 长度 > 6
+ */
+export function filterWordsByDifficulty(words: string[], difficulty: DifficultyLevel): string[] {
+  switch (difficulty) {
+    case 'easy':
+      return words.filter((w) => w.length <= 4)
+    case 'normal':
+      return words.filter((w) => w.length >= 4 && w.length <= 6)
+    case 'hard':
+      return words.filter((w) => w.length > 6)
+    default:
+      return words
+  }
+}
+
 /**
  * 获取当前生效的练习词库
  * 优先读取词库状态模块中的用户词库，若为空则回退到默认模拟数据
@@ -19,6 +41,14 @@ export const PRACTICE_WORDS: string[] = morseData.words
 export function getActivePracticeWords(): string[] {
   const words = useWordLibraryStore.getState().words
   return words.length > 0 ? words : PRACTICE_WORDS
+}
+
+/**
+ * 获取带难度筛选的练习词库
+ */
+export function getPracticeWordsByDifficulty(difficulty: DifficultyLevel): string[] {
+  const words = getActivePracticeWords()
+  return filterWordsByDifficulty(words, difficulty)
 }
 
 /**

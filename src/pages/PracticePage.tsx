@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
-import { Card, Input, Button, Space, Typography, Statistic, Row, Col, message, Tag } from 'antd'
-import { SoundOutlined, CheckOutlined, ReloadOutlined, DeleteOutlined, BookOutlined } from '@ant-design/icons'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { Card, Input, Button, Space, Typography, Statistic, Row, Col, message, Tag, Segmented } from 'antd'
+import { SoundOutlined, CheckOutlined, ReloadOutlined, DeleteOutlined, BookOutlined, FireOutlined } from '@ant-design/icons'
 import { Link } from 'react-router-dom'
 import MorseVisualizer from '../components/MorseVisualizer'
-import { getActivePracticeWords, textToMorse } from '../utils/morse'
+import { getPracticeWordsByDifficulty, textToMorse, type DifficultyLevel } from '../utils/morse'
 import { playMorse } from '../utils/audio'
 import { usePracticeStore, calcAccuracy } from '../store/practiceStore'
 import { useAudioSettingsStore } from '../store/audioSettingsStore'
@@ -24,45 +24,59 @@ function pickRandomWord(wordPool: string[], exclude?: string): string {
  * 听码练习页面
  */
 export default function PracticePage() {
-  const { total, correct, submitAnswer, resetStats } = usePracticeStore()
+  const { total, correct, streak, difficulty, submitAnswer, resetStats, setDifficulty } = usePracticeStore()
   const { speed, pitch } = useAudioSettingsStore()
   const { words: customWords } = useWordLibraryStore()
 
   const activeWords = useMemo(() => {
     void customWords
-    return getActivePracticeWords()
-  }, [customWords])
+    return getPracticeWordsByDifficulty(difficulty)
+  }, [customWords, difficulty])
   const usingCustom = customWords.length > 0
 
+  const prevCustomWordsLen = useRef(customWords.length)
   const [currentWord, setCurrentWord] = useState(() => pickRandomWord(activeWords))
-  const [currentMorse, setCurrentMorse] = useState(() => textToMorse(currentWord))
+  const currentMorse = useMemo(() => textToMorse(currentWord), [currentWord])
   const [answer, setAnswer] = useState('')
   const [playing, setPlaying] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [submitted, setSubmitted] = useState(false)
 
+  /** 重置题目状态 */
+  const resetQuestionState = useCallback((word: string) => {
+    setCurrentWord(word)
+    setAnswer('')
+    setSubmitted(false)
+    setActiveIndex(-1)
+  }, [])
+
   /** 换题 */
   const nextQuestion = useCallback(
     (exclude?: string) => {
       const word = pickRandomWord(activeWords, exclude)
-      setCurrentWord(word)
-      setCurrentMorse(textToMorse(word))
-      setAnswer('')
-      setSubmitted(false)
-      setActiveIndex(-1)
+      resetQuestionState(word)
     },
-    [activeWords],
+    [activeWords, resetQuestionState],
+  )
+
+  /** 切换难度 */
+  const handleDifficultyChange = useCallback(
+    (newDifficulty: DifficultyLevel) => {
+      setDifficulty(newDifficulty)
+      const newWords = getPracticeWordsByDifficulty(newDifficulty)
+      const word = pickRandomWord(newWords, currentWord)
+      resetQuestionState(word)
+    },
+    [setDifficulty, currentWord, resetQuestionState],
   )
 
   useEffect(() => {
-    const word = pickRandomWord(activeWords)
-    setCurrentWord(word)
-    setCurrentMorse(textToMorse(word))
-  }, [activeWords])
-
-  useEffect(() => {
-    setCurrentMorse(textToMorse(currentWord))
-  }, [currentWord])
+    if (customWords.length !== prevCustomWordsLen.current) {
+      prevCustomWordsLen.current = customWords.length
+      const word = pickRandomWord(activeWords, currentWord)
+      queueMicrotask(() => resetQuestionState(word))
+    }
+  }, [customWords.length, activeWords, currentWord, resetQuestionState])
 
   /** 播放当前题目摩斯码 */
   const handlePlay = useCallback(async () => {
@@ -112,6 +126,22 @@ export default function PracticePage() {
           管理词库
         </Link>
       </Space>
+
+      <Card style={{ marginBottom: 16 }}>
+        <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Text strong>难度选择</Text>
+          <Segmented
+            value={difficulty}
+            onChange={(value) => handleDifficultyChange(value as DifficultyLevel)}
+            options={[
+              { label: '简单', value: 'easy' },
+              { label: '普通', value: 'normal' },
+              { label: '困难', value: 'hard' },
+            ]}
+          />
+        </Space>
+      </Card>
+
       <Paragraph type="secondary">
         点击播放听取摩斯电码，输入你听到的内容并提交。统计将保存在本地。
         {usingCustom
@@ -120,23 +150,33 @@ export default function PracticePage() {
       </Paragraph>
 
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col span={8}>
+        <Col span={6}>
           <Card>
             <Statistic title="总题数" value={total} />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col span={6}>
           <Card>
             <Statistic title="正确数" value={correct} valueStyle={{ color: '#3f8600' }} />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col span={6}>
           <Card>
             <Statistic
               title="正确率"
               value={accuracy}
               suffix="%"
               valueStyle={{ color: accuracy >= 80 ? '#3f8600' : accuracy >= 50 ? '#faad14' : '#cf1322' }}
+            />
+          </Card>
+        </Col>
+        <Col span={6}>
+          <Card>
+            <Statistic
+              title="连对次数"
+              value={streak}
+              prefix={<FireOutlined />}
+              valueStyle={{ color: streak >= 3 ? '#cf1322' : '#faad14' }}
             />
           </Card>
         </Col>

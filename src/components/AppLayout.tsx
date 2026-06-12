@@ -1,5 +1,5 @@
 import { Layout, Menu } from 'antd'
-import { SwapOutlined, SoundOutlined, TableOutlined } from '@ant-design/icons'
+import { SwapOutlined, SoundOutlined, TableOutlined, EditOutlined } from '@ant-design/icons'
 import { Link, useLocation, Outlet } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
@@ -19,6 +19,11 @@ export default function AppLayout() {
       key: '/practice',
       icon: <SoundOutlined />,
       label: <Link to="/practice">听码练习</Link>,
+    },
+    {
+      key: '/斜杠敲码',
+      icon: <EditOutlined />,
+      label: <Link to="/斜杠敲码">斜杠敲码</Link>,
     },
     {
       key: '/对照表',

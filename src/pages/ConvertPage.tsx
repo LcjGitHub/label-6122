@@ -23,7 +23,8 @@ export default function ConvertPage() {
   const [autoAnimate, setAutoAnimate] = useState(false)
   const [visualResetKey, setVisualResetKey] = useState(0)
   const [slowDemoMode, setSlowDemoMode] = useState(false)
-  const [demoSpeedMultiplier, setDemoSpeedMultiplier] = useState(1)
+  const [demoSpeedMultiplier, setDemoSpeedMultiplier] = useState(0.5)
+  const [sliderDisplayValue, setSliderDisplayValue] = useState(0.5)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastConvertedTextRef = useRef<string>('')
   const lastMorseRef = useRef<string>('')
@@ -145,6 +146,10 @@ export default function ConvertPage() {
       message.warning('请先输入或转换摩斯码')
       return
     }
+    if (slowDemoMode) {
+      message.warning('慢速演示模式下无法播放音频，请先关闭慢速演示')
+      return
+    }
     lastMorseRef.current = morse
     setAutoAnimate(false)
     setActiveIndex(-1)
@@ -165,7 +170,7 @@ export default function ConvertPage() {
     )
     playSessionRef.current = session
     await session.play()
-  }, [morse, speed, pitch])
+  }, [morse, speed, pitch, slowDemoMode])
 
   /** 暂停播放 */
   const handlePause = useCallback(() => {
@@ -252,7 +257,7 @@ export default function ConvertPage() {
               <Button
                 icon={<SoundOutlined />}
                 onClick={handlePlay}
-                disabled={!morse.trim()}
+                disabled={!morse.trim() || slowDemoMode}
               >
                 播放
               </Button>
@@ -330,9 +335,11 @@ export default function ConvertPage() {
               <Typography.Text>慢速演示模式</Typography.Text>
               <Switch
                 checked={slowDemoMode}
+                aria-label="慢速演示模式开关"
                 onChange={(checked) => {
                   setSlowDemoMode(checked)
                   if (checked) {
+                    setSliderDisplayValue(demoSpeedMultiplier)
                     if (playSessionRef.current) {
                       playSessionRef.current.stop()
                       playSessionRef.current = null
@@ -351,13 +358,16 @@ export default function ConvertPage() {
                   min={0.5}
                   max={2}
                   step={0.1}
-                  value={demoSpeedMultiplier}
-                  onChange={setDemoSpeedMultiplier}
+                  value={sliderDisplayValue}
+                  onChange={setSliderDisplayValue}
+                  onChangeComplete={(value: number) => {
+                    setDemoSpeedMultiplier(value)
+                  }}
                   style={{ flex: 1 }}
                   tooltip={{ formatter: (value) => `${value}x` }}
                 />
                 <Typography.Text style={{ minWidth: 48, textAlign: 'right' }}>
-                  {demoSpeedMultiplier.toFixed(1)}x
+                  {sliderDisplayValue.toFixed(1)}x
                 </Typography.Text>
               </div>
             )}

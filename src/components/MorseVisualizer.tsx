@@ -82,7 +82,7 @@ export default function MorseVisualizer({
         if (cancelled || resetKeyRef.current !== startedResetKey) break
         setAnimIndexSafe(-1)
         await new Promise<void>((r) => {
-          animationFrame = setTimeout(r, 500)
+          animationFrame = setTimeout(r, timing.letterGap)
         })
       }
     }

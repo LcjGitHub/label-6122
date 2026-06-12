@@ -47,7 +47,7 @@ export interface MorseTiming {
   frequency: number
 }
 
-type MorseSymbol = 'dot' | 'dash' | 'letterGap' | 'wordGap'
+export type MorseSymbol = 'dot' | 'dash' | 'letterGap' | 'wordGap'
 
 export class MorsePlaySession {
   private symbols: MorseSymbol[]

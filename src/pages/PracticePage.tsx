@@ -5,10 +5,10 @@ import { Link } from 'react-router-dom'
 import MorseVisualizer from '../components/MorseVisualizer'
 import WrongQuestionList from '../components/WrongQuestionList'
 import { getPracticeWordsByDifficulty, textToMorse, type DifficultyLevel } from '../utils/morse'
-import { createPlaySession, type MorsePlaySession, type PlaybackState } from '../utils/audio'
 import { usePracticeStore, calcAccuracy } from '../store/practiceStore'
 import { useAudioSettingsStore } from '../store/audioSettingsStore'
 import { useWordLibraryStore } from '../store/wordLibraryStore'
+import { useMorsePlayer } from '../hooks/useMorsePlayer'
 
 const { Title, Paragraph, Text } = Typography
 
@@ -41,29 +41,30 @@ export default function PracticePage() {
   const [currentWord, setCurrentWord] = useState<string | null>(() => pickRandomWord(activeWords))
   const currentMorse = useMemo(() => (currentWord ? textToMorse(currentWord) : ''), [currentWord])
   const [answer, setAnswer] = useState('')
-  const [playbackState, setPlaybackState] = useState<PlaybackState>('idle')
-  const [activeIndex, setActiveIndex] = useState(-1)
-  const [visualResetKey, setVisualResetKey] = useState(0)
   const [submitted, setSubmitted] = useState(false)
-  const playSessionRef = useRef<MorsePlaySession | null>(null)
-  const lastMorseRef = useRef<string>('')
   const answerCardRef = useRef<HTMLDivElement>(null)
+
+  const {
+    playbackState,
+    activeIndex,
+    visualResetKey,
+    play: morsePlay,
+    pause: morsePause,
+    resume: morseResume,
+    stop: morseStop,
+    forceStopAndReset,
+  } = useMorsePlayer({
+    morse: currentMorse,
+    settings: { speed, pitch },
+  })
 
   /** 重置题目状态 */
   const resetQuestionState = useCallback((word: string | null) => {
-    if (playSessionRef.current) {
-      playSessionRef.current.stop()
-      playSessionRef.current = null
-    }
-    const newMorse = word ? textToMorse(word) : ''
-    lastMorseRef.current = newMorse
+    forceStopAndReset()
     setCurrentWord(word)
     setAnswer('')
     setSubmitted(false)
-    setActiveIndex(-1)
-    setVisualResetKey((k) => k + 1)
-    setPlaybackState('idle')
-  }, [])
+  }, [forceStopAndReset])
 
   /** 换题 */
   const nextQuestion = useCallback(
@@ -102,87 +103,26 @@ export default function PracticePage() {
     }
   }, [customWords, activeWords, currentWord, resetQuestionState])
 
-  useEffect(() => {
-    if (lastMorseRef.current === '') {
-      lastMorseRef.current = currentMorse
-      return
-    }
-    if (currentMorse !== lastMorseRef.current) {
-      lastMorseRef.current = currentMorse
-      const session = playSessionRef.current
-      if (session) {
-        const state = session.getState()
-        if (state === 'playing' || state === 'paused') {
-          session.stop()
-          playSessionRef.current = null
-          setActiveIndex(-1)
-          setVisualResetKey((k) => k + 1)
-          setPlaybackState('idle')
-        }
-      }
-    }
-  }, [currentMorse])
-
-  useEffect(() => {
-    return () => {
-      if (playSessionRef.current) {
-        playSessionRef.current.stop()
-        playSessionRef.current = null
-      }
-    }
-  }, [])
-
   /** 播放当前题目摩斯码 */
   const handlePlay = useCallback(async () => {
     if (!currentMorse || noAvailableWords) return
-    lastMorseRef.current = currentMorse
-    setActiveIndex(-1)
-    setVisualResetKey((k) => k + 1)
-
-    const session = createPlaySession(
-      currentMorse,
-      (_symbol, index) => {
-        setActiveIndex(index)
-      },
-      { speed, pitch },
-      (state) => setPlaybackState(state),
-      () => {
-        setActiveIndex(-1)
-        setPlaybackState('idle')
-        playSessionRef.current = null
-      },
-    )
-    playSessionRef.current = session
-    await session.play()
-  }, [currentMorse, noAvailableWords, speed, pitch])
+    await morsePlay()
+  }, [currentMorse, noAvailableWords, morsePlay])
 
   /** 暂停播放 */
   const handlePause = useCallback(() => {
-    const session = playSessionRef.current
-    if (session && session.getState() === 'playing') {
-      session.pause()
-    }
-  }, [])
+    morsePause()
+  }, [morsePause])
 
   /** 继续播放 */
   const handleResume = useCallback(() => {
-    const session = playSessionRef.current
-    if (session && session.getState() === 'paused') {
-      session.resume()
-    }
-  }, [])
+    morseResume()
+  }, [morseResume])
 
   /** 停止播放 */
   const handleStop = useCallback(() => {
-    const session = playSessionRef.current
-    if (session) {
-      session.stop()
-      playSessionRef.current = null
-    }
-    setActiveIndex(-1)
-    setVisualResetKey((k) => k + 1)
-    setPlaybackState('idle')
-  }, [])
+    morseStop()
+  }, [morseStop])
 
   /** 提交答案 */
   const handleSubmit = () => {

@@ -4,10 +4,10 @@ import { SwapOutlined, SoundOutlined, ClearOutlined, CopyOutlined, PauseOutlined
 import MorseVisualizer from '../components/MorseVisualizer'
 import RecordList from '../components/RecordList'
 import { textToMorse, morseToText, isValidMorse, safeTextToMorse } from '../utils/morse'
-import { createPlaySession, type MorsePlaySession, type PlaybackState } from '../utils/audio'
 import { copyToClipboard } from '../utils/clipboard'
 import { useConvertRecordStore } from '../store/convertRecordStore'
 import { useAudioSettingsStore } from '../store/audioSettingsStore'
+import { useMorsePlayer } from '../hooks/useMorsePlayer'
 
 const { TextArea } = Input
 const { Title, Paragraph } = Typography
@@ -18,19 +18,28 @@ const { Title, Paragraph } = Typography
 export default function ConvertPage() {
   const [text, setText] = useState('')
   const [morse, setMorse] = useState('')
-  const [playbackState, setPlaybackState] = useState<PlaybackState>('idle')
-  const [activeIndex, setActiveIndex] = useState(-1)
   const [autoAnimate, setAutoAnimate] = useState(false)
-  const [visualResetKey, setVisualResetKey] = useState(0)
   const [slowDemoMode, setSlowDemoMode] = useState(false)
   const [demoSpeedMultiplier, setDemoSpeedMultiplier] = useState(0.5)
   const [sliderDisplayValue, setSliderDisplayValue] = useState(0.5)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastConvertedTextRef = useRef<string>('')
-  const lastMorseRef = useRef<string>('')
-  const playSessionRef = useRef<MorsePlaySession | null>(null)
   const { addRecord } = useConvertRecordStore()
   const { speed, pitch } = useAudioSettingsStore()
+
+  const {
+    playbackState,
+    activeIndex,
+    visualResetKey,
+    play: morsePlay,
+    pause: morsePause,
+    resume: morseResume,
+    stop: morseStop,
+    forceStopAndReset,
+  } = useMorsePlayer({
+    morse,
+    settings: { speed, pitch },
+  })
 
   useEffect(() => {
     if (debounceTimerRef.current) {
@@ -59,36 +68,6 @@ export default function ConvertPage() {
       }
     }
   }, [text])
-
-  useEffect(() => {
-    if (lastMorseRef.current === '') {
-      lastMorseRef.current = morse
-      return
-    }
-    if (morse !== lastMorseRef.current) {
-      lastMorseRef.current = morse
-      const session = playSessionRef.current
-      if (session) {
-        const state = session.getState()
-        if (state === 'playing' || state === 'paused') {
-          session.stop()
-          playSessionRef.current = null
-          setActiveIndex(-1)
-          setVisualResetKey((k) => k + 1)
-          setPlaybackState('idle')
-        }
-      }
-    }
-  }, [morse])
-
-  useEffect(() => {
-    return () => {
-      if (playSessionRef.current) {
-        playSessionRef.current.stop()
-        playSessionRef.current = null
-      }
-    }
-  }, [])
 
   /** 文本 → 摩斯 */
   const handleTextToMorse = useCallback(() => {
@@ -125,20 +104,13 @@ export default function ConvertPage() {
 
   /** 回填记录到输入框 */
   const handleRestore = useCallback((restoredText: string, restoredMorse: string) => {
-    if (playSessionRef.current) {
-      playSessionRef.current.stop()
-      playSessionRef.current = null
-    }
+    forceStopAndReset()
     setText(restoredText)
     setMorse(restoredMorse)
     setAutoAnimate(false)
-    setActiveIndex(-1)
-    setVisualResetKey((k) => k + 1)
-    setPlaybackState('idle')
     lastConvertedTextRef.current = restoredText
-    lastMorseRef.current = restoredMorse
     message.success('已回填记录')
-  }, [])
+  }, [forceStopAndReset])
 
   /** 播放摩斯音频 */
   const handlePlay = useCallback(async () => {
@@ -150,70 +122,32 @@ export default function ConvertPage() {
       message.warning('慢速演示模式下无法播放音频，请先关闭慢速演示')
       return
     }
-    lastMorseRef.current = morse
     setAutoAnimate(false)
-    setActiveIndex(-1)
-    setVisualResetKey((k) => k + 1)
-
-    const session = createPlaySession(
-      morse,
-      (_symbol, index) => {
-        setActiveIndex(index)
-      },
-      { speed, pitch },
-      (state) => setPlaybackState(state),
-      () => {
-        setActiveIndex(-1)
-        setPlaybackState('idle')
-        playSessionRef.current = null
-      },
-    )
-    playSessionRef.current = session
-    await session.play()
-  }, [morse, speed, pitch, slowDemoMode])
+    await morsePlay()
+  }, [morse, slowDemoMode, morsePlay])
 
   /** 暂停播放 */
   const handlePause = useCallback(() => {
-    const session = playSessionRef.current
-    if (session && session.getState() === 'playing') {
-      session.pause()
-    }
-  }, [])
+    morsePause()
+  }, [morsePause])
 
   /** 继续播放 */
   const handleResume = useCallback(() => {
-    const session = playSessionRef.current
-    if (session && session.getState() === 'paused') {
-      session.resume()
-    }
-  }, [])
+    morseResume()
+  }, [morseResume])
 
   /** 停止播放 */
   const handleStop = useCallback(() => {
-    const session = playSessionRef.current
-    if (session) {
-      session.stop()
-      playSessionRef.current = null
-    }
-    setActiveIndex(-1)
-    setVisualResetKey((k) => k + 1)
-    setPlaybackState('idle')
-  }, [])
+    morseStop()
+  }, [morseStop])
 
   /** 清空输入 */
   const handleClear = () => {
-    if (playSessionRef.current) {
-      playSessionRef.current.stop()
-      playSessionRef.current = null
-    }
+    forceStopAndReset()
     setText('')
     setMorse('')
     setAutoAnimate(false)
-    setActiveIndex(-1)
-    setVisualResetKey((k) => k + 1)
-    setPlaybackState('idle')
     lastConvertedTextRef.current = ''
-    lastMorseRef.current = ''
   }
 
   /** 复制摩斯码到剪贴板 */
@@ -340,13 +274,7 @@ export default function ConvertPage() {
                   setSlowDemoMode(checked)
                   if (checked) {
                     setSliderDisplayValue(demoSpeedMultiplier)
-                    if (playSessionRef.current) {
-                      playSessionRef.current.stop()
-                      playSessionRef.current = null
-                    }
-                    setActiveIndex(-1)
-                    setPlaybackState('idle')
-                    setVisualResetKey((k) => k + 1)
+                    forceStopAndReset()
                   }
                 }}
               />

@@ -3,6 +3,7 @@ import { Table, Input, Typography } from 'antd'
 import { SearchOutlined, SoundOutlined } from '@ant-design/icons'
 import { MORSE_MAP } from '../utils/morse'
 import { playChar, stopPlay } from '../utils/audio'
+import { useAudioSettingsStore } from '../store/audioSettingsStore'
 import MorseVisualizer from './MorseVisualizer'
 
 const { Text } = Typography
@@ -76,6 +77,7 @@ interface MorseTableProps {
 export default function MorseTable({ onPlay }: MorseTableProps) {
   const [search, setSearch] = useState('')
   const [activeKey, setActiveKey] = useState<string | null>(null)
+  const audioSettings = useAudioSettingsStore()
 
   const filtered = DATA.filter(
     (item) =>
@@ -88,9 +90,9 @@ export default function MorseTable({ onPlay }: MorseTableProps) {
       stopPlay()
       setActiveKey(record.key)
       onPlay?.(record.char)
-      playChar(record.char)
+      playChar(record.char, undefined, audioSettings)
     },
-    [onPlay],
+    [onPlay, audioSettings],
   )
 
   return (

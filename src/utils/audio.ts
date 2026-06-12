@@ -1,22 +1,14 @@
 import { parseMorseSymbols, MORSE_MAP } from './morse'
+import { getTimingFromSettings, type AudioSettings } from '../store/audioSettingsStore'
 
-/** 摩斯播放时序配置（毫秒） */
-const TIMING = {
-  dot: 100,
-  dash: 300,
-  letterGap: 300,
-  wordGap: 700,
-  symbolGap: 100,
-  frequency: 600,
-} as const
+const DEFAULT_SETTINGS: AudioSettings = { speed: 'normal', pitch: 'mid' }
+
+const DEFAULT_TIMING = getTimingFromSettings(DEFAULT_SETTINGS)
 
 let audioContext: AudioContext | null = null
 let playCancelled = false
 let currentOscillator: OscillatorNode | null = null
 
-/**
- * 获取或创建 AudioContext 实例
- */
 function getAudioContext(): AudioContext {
   if (!audioContext) {
     audioContext = new AudioContext()
@@ -24,17 +16,13 @@ function getAudioContext(): AudioContext {
   return audioContext
 }
 
-/**
- * 播放指定时长的单音
- * @param durationMs - 持续时间（毫秒）
- */
-function playTone(durationMs: number): Promise<void> {
+function playTone(durationMs: number, frequency: number): Promise<void> {
   const ctx = getAudioContext()
   const oscillator = ctx.createOscillator()
   const gainNode = ctx.createGain()
 
   oscillator.type = 'sine'
-  oscillator.frequency.value = TIMING.frequency
+  oscillator.frequency.value = frequency
   gainNode.gain.value = 0.3
 
   oscillator.connect(gainNode)
@@ -52,20 +40,26 @@ function playTone(durationMs: number): Promise<void> {
   })
 }
 
-/**
- * 播放完整摩斯电码序列
- * @param morse - 摩斯电码字符串
- * @param onSymbol - 每播放一个符号时的回调
- */
+export interface MorseTiming {
+  dot: number
+  dash: number
+  letterGap: number
+  wordGap: number
+  symbolGap: number
+  frequency: number
+}
+
 export async function playMorse(
   morse: string,
   onSymbol?: (symbol: 'dot' | 'dash' | 'letterGap' | 'wordGap', index: number) => void,
+  settings?: AudioSettings,
 ): Promise<void> {
   const ctx = getAudioContext()
   if (ctx.state === 'suspended') {
     await ctx.resume()
   }
 
+  const timing = settings ? getTimingFromSettings(settings) : DEFAULT_TIMING
   const symbols = parseMorseSymbols(morse)
   playCancelled = false
 
@@ -78,26 +72,23 @@ export async function playMorse(
 
     switch (symbol) {
       case 'dot':
-        await playTone(TIMING.dot)
-        await delay(TIMING.symbolGap)
+        await playTone(timing.dot, timing.frequency)
+        await delay(timing.symbolGap)
         break
       case 'dash':
-        await playTone(TIMING.dash)
-        await delay(TIMING.symbolGap)
+        await playTone(timing.dash, timing.frequency)
+        await delay(timing.symbolGap)
         break
       case 'letterGap':
-        await delay(TIMING.letterGap)
+        await delay(timing.letterGap)
         break
       case 'wordGap':
-        await delay(TIMING.wordGap)
+        await delay(timing.wordGap)
         break
     }
   }
 }
 
-/**
- * 停止当前正在播放的摩斯电码
- */
 export function stopPlay(): void {
   playCancelled = true
   if (currentOscillator) {
@@ -110,36 +101,34 @@ export function stopPlay(): void {
   }
 }
 
-/**
- * 播放单个点或划
- * @param type - 符号类型
- */
-export async function playSingleSymbol(type: 'dot' | 'dash'): Promise<void> {
+export async function playSingleSymbol(
+  type: 'dot' | 'dash',
+  settings?: AudioSettings,
+): Promise<void> {
   const ctx = getAudioContext()
   if (ctx.state === 'suspended') {
     await ctx.resume()
   }
-  await playTone(type === 'dot' ? TIMING.dot : TIMING.dash)
+  const timing = settings ? getTimingFromSettings(settings) : DEFAULT_TIMING
+  await playTone(type === 'dot' ? timing.dot : timing.dash, timing.frequency)
 }
 
-/**
- * 播放单个字符的摩斯电码
- * @param char - 单个字母或数字字符
- * @param onSymbol - 每播放一个符号时的回调
- */
-export async function playChar(char: string, onSymbol?: (symbol: 'dot' | 'dash' | 'letterGap' | 'wordGap', index: number) => void): Promise<void> {
+export async function playChar(
+  char: string,
+  onSymbol?: (symbol: 'dot' | 'dash' | 'letterGap' | 'wordGap', index: number) => void,
+  settings?: AudioSettings,
+): Promise<void> {
   const morse = MORSE_MAP[char.toUpperCase()]
   if (!morse) return
-  await playMorse(morse, onSymbol)
+  await playMorse(morse, onSymbol, settings)
 }
 
-/** 导出时序常量供动画组件使用 */
-export { TIMING }
+export function getTiming(settings?: AudioSettings): MorseTiming {
+  return settings ? getTimingFromSettings(settings) : DEFAULT_TIMING
+}
 
-/**
- * 延迟指定毫秒
- * @param ms - 毫秒数
- */
+export { DEFAULT_TIMING as TIMING }
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }

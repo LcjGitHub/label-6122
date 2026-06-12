@@ -5,6 +5,7 @@ import MorseVisualizer from '../components/MorseVisualizer'
 import { PRACTICE_WORDS, textToMorse } from '../utils/morse'
 import { playMorse } from '../utils/audio'
 import { usePracticeStore, calcAccuracy } from '../store/practiceStore'
+import { useAudioSettingsStore } from '../store/audioSettingsStore'
 
 const { Title, Paragraph, Text } = Typography
 
@@ -23,6 +24,7 @@ function pickRandomWord(exclude?: string): string {
  */
 export default function PracticePage() {
   const { total, correct, submitAnswer, resetStats } = usePracticeStore()
+  const audioSettings = useAudioSettingsStore()
   const [currentWord, setCurrentWord] = useState(() => pickRandomWord())
   const [currentMorse, setCurrentMorse] = useState(() => textToMorse(currentWord))
   const [answer, setAnswer] = useState('')
@@ -51,12 +53,12 @@ export default function PracticePage() {
     try {
       await playMorse(currentMorse, (_symbol, index) => {
         setActiveIndex(index)
-      })
+      }, audioSettings)
     } finally {
       setPlaying(false)
       setActiveIndex(-1)
     }
-  }, [currentMorse])
+  }, [currentMorse, audioSettings])
 
   /** 提交答案 */
   const handleSubmit = () => {

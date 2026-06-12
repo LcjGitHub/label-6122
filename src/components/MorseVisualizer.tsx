@@ -1,21 +1,16 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { parseMorseSymbols } from '../utils/morse'
-import { TIMING } from '../utils/audio'
+import { getTiming } from '../utils/audio'
+import { useAudioSettingsStore } from '../store/audioSettingsStore'
 import './MorseVisualizer.css'
 
 interface MorseVisualizerProps {
-  /** 摩斯电码字符串 */
   morse: string
-  /** 是否正在播放（外部驱动高亮） */
   activeIndex?: number
-  /** 是否自动循环动画预览 */
   autoAnimate?: boolean
 }
 
-/**
- * 摩斯点划节奏可视化组件
- */
 export default function MorseVisualizer({
   morse,
   activeIndex = -1,
@@ -23,6 +18,7 @@ export default function MorseVisualizer({
 }: MorseVisualizerProps) {
   const symbols = parseMorseSymbols(morse)
   const [animIndex, setAnimIndex] = useState(-1)
+  const audioSettings = useAudioSettingsStore()
 
   useEffect(() => {
     if (!autoAnimate || !morse.trim()) {
@@ -31,6 +27,7 @@ export default function MorseVisualizer({
     }
 
     const parsed = parseMorseSymbols(morse)
+    const timing = getTiming(audioSettings)
     let cancelled = false
 
     const run = async () => {
@@ -42,12 +39,12 @@ export default function MorseVisualizer({
 
           const duration =
             sym === 'dot'
-              ? TIMING.dot + TIMING.symbolGap
+              ? timing.dot + timing.symbolGap
               : sym === 'dash'
-                ? TIMING.dash + TIMING.symbolGap
+                ? timing.dash + timing.symbolGap
                 : sym === 'letterGap'
-                  ? TIMING.letterGap
-                  : TIMING.wordGap
+                  ? timing.letterGap
+                  : timing.wordGap
 
           await new Promise((r) => setTimeout(r, duration))
         }
@@ -60,7 +57,7 @@ export default function MorseVisualizer({
     return () => {
       cancelled = true
     }
-  }, [autoAnimate, morse])
+  }, [autoAnimate, morse, audioSettings])
 
   if (!morse.trim()) {
     return <div className="morse-visualizer empty">输入或转换后将在此展示点划节奏</div>

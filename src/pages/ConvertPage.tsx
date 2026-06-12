@@ -6,6 +6,7 @@ import RecordList from '../components/RecordList'
 import { textToMorse, morseToText, isValidMorse } from '../utils/morse'
 import { playMorse } from '../utils/audio'
 import { useConvertRecordStore } from '../store/convertRecordStore'
+import { useAudioSettingsStore } from '../store/audioSettingsStore'
 
 const { TextArea } = Input
 const { Title, Paragraph } = Typography
@@ -20,6 +21,7 @@ export default function ConvertPage() {
   const [activeIndex, setActiveIndex] = useState(-1)
   const [autoAnimate, setAutoAnimate] = useState(false)
   const { addRecord } = useConvertRecordStore()
+  const audioSettings = useAudioSettingsStore()
 
   /** 文本 → 摩斯 */
   const handleTextToMorse = useCallback(() => {
@@ -75,12 +77,12 @@ export default function ConvertPage() {
     try {
       await playMorse(morse, (_symbol, index) => {
         setActiveIndex(index)
-      })
+      }, audioSettings)
     } finally {
       setPlaying(false)
       setActiveIndex(-1)
     }
-  }, [morse])
+  }, [morse, audioSettings])
 
   /** 清空输入 */
   const handleClear = () => {

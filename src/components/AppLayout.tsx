@@ -1,13 +1,16 @@
-import { Layout, Menu } from 'antd'
-import { SwapOutlined, SoundOutlined, TableOutlined, EditOutlined } from '@ant-design/icons'
+import { useState } from 'react'
+import { Layout, Menu, Button } from 'antd'
+import { SwapOutlined, SoundOutlined, TableOutlined, EditOutlined, SettingOutlined } from '@ant-design/icons'
 import { Link, useLocation, Outlet } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import SettingsDrawer from './SettingsDrawer'
 
 const { Header, Content, Footer } = Layout
 
 export default function AppLayout() {
   const location = useLocation()
   const decodedPath = decodeURIComponent(location.pathname)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const menuItems = [
     {
@@ -45,6 +48,12 @@ export default function AppLayout() {
           items={menuItems}
           style={{ flex: 1, minWidth: 0 }}
         />
+        <Button
+          type="text"
+          icon={<SettingOutlined />}
+          style={{ color: '#fff', fontSize: 18 }}
+          onClick={() => setSettingsOpen(true)}
+        />
       </Header>
       <Content style={{ padding: '24px 48px' }}>
         <motion.div
@@ -59,6 +68,7 @@ export default function AppLayout() {
       <Footer style={{ textAlign: 'center' }}>
         摩斯电码互转与听码练习 · React + Vite + TypeScript
       </Footer>
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </Layout>
   )
 }
